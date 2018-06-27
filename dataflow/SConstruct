@@ -1,0 +1,10 @@
+env = Environment()
+
+env.Append(LIBS 		= ['pthread', 'gtest'])
+env.Append(LIBPATH 		= '/usr/local/lib')
+env.Append(CPPFLAGS 	= ['-Wall'])
+env.Append(CXXFLAGS 	= ['-std=c++14'])
+env.Append(CPPPATH      = "src")
+SRC = Glob("src/model/*.cpp") + Glob("tests/*.cpp")
+
+env.Program(target = 'dataflow_tests', source = SRC)

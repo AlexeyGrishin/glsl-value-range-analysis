@@ -1,0 +1,5 @@
+.vscode
+html/main.js*
+node_modules
+dataflow/.sconsign.dblite
+dataflow/**/*.o
