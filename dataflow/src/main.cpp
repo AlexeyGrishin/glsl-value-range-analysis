@@ -87,6 +87,18 @@ public:
             object->set_("cmdId", new client::Number(c.cmdId));
             object->set_("varId", new client::Number(c.varId));
             object->set_("range", createRange(c.newRange));
+            object->set_("revertable", new client::Number(c.revertable));
+            switch (c.reason) {
+                case TR_Operation:
+                    object->set_("reason", new client::String("operation"));
+                    break;
+                case TR_Branch:
+                    object->set_("reason", new client::String("branch"));
+                    break;
+                case TR_BackPropagation:
+                    object->set_("reason", new client::String("back_propagation"));
+                    break;
+            }
             report->push(object);            
         }
 

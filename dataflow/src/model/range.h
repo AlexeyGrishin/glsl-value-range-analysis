@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defs.h"
+#include "log.h"
 #include <cmath>
 //todo: avoid std, if only string is used. redo with old good char*
 //todo: with -nostdlib it is 13K, with - 500K O_o. better to build without, but will have to not use std::list and other stuff

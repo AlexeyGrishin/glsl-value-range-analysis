@@ -2,6 +2,7 @@
 #include "defs.h"
 #include "command.h"
 #include "variable.h"
+#include "ops.h"
 
 struct Branch;
 struct Warning;
@@ -17,6 +18,8 @@ private:
     BranchId nextBranchId;
     Warning* warnings[MAX_WARNINGS];
     unsigned int warningsCount;
+
+    void populateChanges(CmdId id, BranchId branchId, BranchId parentBranchId, VarId varId, const TypeRange& changedRange);
 public:
     AnalisysContext();
 
@@ -45,6 +48,8 @@ struct VariableChange {
     BranchId branchId;
     CmdId cmdId;
     TypeRange newRange;
+    TypeReason reason;
+    bool revertable;
 };
 
 struct Branch {
@@ -93,6 +98,10 @@ public:
         return command->arguments[argNr] != 0;
     }
 
+    VarId getVarId(int argNr) const {
+        return command->arguments[argNr];
+    }
+
     const TypeRange& get(int argNr) {
         const TypeRange* out = ctx->getVariable(command->arguments[argNr]).getRange(branchId);
         return *out;
@@ -100,7 +109,16 @@ public:
 
     void set(int argNr, const TypeRange& newRange) {
         if (!isDefined(argNr)) return;
-        ctx->getVariable(command->arguments[argNr]).changeRange(branchId, command->cmdId, newRange);
+        ctx->getVariable(command->arguments[argNr]).changeRange(branchId, command->cmdId, newRange, TR_Operation, NULL);
+    }
+
+    void set(int argNr, const TypeRange& newRange, RestoreRange* restorer, unsigned int depArgNr) {
+        if (!isDefined(argNr)) return;
+        if (restorer != NULL) {
+            restorer->setDependent(getVarId(depArgNr));
+            restorer->setChangedAt(command->cmdId);
+        }
+        ctx->getVariable(command->arguments[argNr]).changeRange(branchId, command->cmdId, newRange, TR_Operation, restorer);
     }
 
     void set(int argNr, bool bval) {

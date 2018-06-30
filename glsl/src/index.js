@@ -2,8 +2,8 @@ import TokenString from 'glsl-tokenizer/string'
 import ParseTokens from 'glsl-parser/direct'
 import {VariablesMap, convert, devectorize, addVarsInOut, prepareForAnalysis, varPtr, Components} from './ast2dataflow'
 import Range from './range'
-import OpCode from "./opcodes"
 import UIController from "./ui"
+import HumanReport from "./humanreport"
 
 window.TypeRange = Range;
 
@@ -34,11 +34,11 @@ void main() {
     vec2 k;
     k.xy = sin(color+a).rg;
     if (k.x > 0.5) {
-        gl_FragColor.r = k.x * 2.;
+        gl_FragColor.r = k.x * 2. - b;
     } else {
         gl_FragColor.r = k.x / 2.;
     }
-    gl_FragColor.a = 2.;
+    gl_FragColor.a = step(0., k.x)*k.x;  //k.x < 0 ? 0 : 1
     gl_FragColor.gb = vec2(1.);
 }
 
@@ -59,7 +59,7 @@ function printNode(node, indent = 0) {
     for (let c of node.children || []) printNode(c, indent+1);
 }
 
-const DEBUG = false;
+const DEBUG = true;
 function process(src) {
 
     let tree = ParseTokens(TokenString(src));
@@ -122,8 +122,9 @@ function process(src) {
     let report = [];
     flow.getReport(report);
     if (DEBUG) {
-        //let filter = () => true;
-        let filter = (r) => r.varId == 1;
+        let filter = () => true;
+        //let filter = (r) => r.varId == 1;
+        //let filter = (r) => r.varId == map.getVariable("k.x").id
         console.groupCollapsed("response");
         console.log(JSON.stringify(report.filter(filter), null, 4));
         console.groupEnd();
@@ -152,123 +153,6 @@ window.DataFlowApi.promise.then(() => {
     UIController.process();
 });
 
-class HumanReport
-{
-    constructor(report, map, ops, src) {
-
-        function getRealVarName(varId) {
-            let variable = map.getById(varId);
-            if (!variable) return {print: "?unknown?", highlight: null};
-            let name = variable.name;
-            if (name.indexOf(".") !== -1) {
-                let [main, suffix] = name.split(".");
-                let foundMain = Components.main.split('').some(ms => src.indexOf(`${main}.${ms}`) != -1);
-                let foundColor = Components.color.split('').some(ms => src.indexOf(`${main}.${ms}`) != -1);
-                if (foundColor && !foundMain) {
-                    suffix = Components.color.charAt(Components.main.indexOf(suffix));
-                }
-                return {print: `${main}.${suffix}`, highlight: "main."}
-            }
-            return {print: name, highlight: name}
-        }
-
-        function formatVarChange(varChange) {
-            let varName = getRealVarName(varChange.varId);
-            let newRange = varChange.range;
-            return `${varName.print} ∈ ${newRange.toString()}`;
-        }
- 
-        function getOriginalOp(cmdId) { return ops.find(op => op.cmdId == cmdId)}
-        //1. branches
-        let branches = report.filter(b => b.type === "branch");
-        let branchesMap = new Map();
-        for (let b of branches) {
-            b.op = getOriginalOp(b.cmdId);
-            let varChange = report.find(c => c.branchId == b.branchId && c.type == "change" && c.cmdId == b.cmdId && c.varId == b.varId);
-            if (b.branchId != 0 && varChange) {
-                b.reason = formatVarChange(varChange);
-            }
-            b.line = b.op ? b.op.line : -1;
-            branchesMap.set(+b.branchId, b);
-        }
-
-        for (let b of branches) {
-            if (b.branchId != 0) {
-                b.parent = branchesMap.get(+b.parentId);
-            }
-        }
-
-        function getFullBranchConditions(branchId) {
-            let branch = branchesMap.get(+branchId);
-            let conds = [];
-            while (branch != null) {
-                if (branch.reason) conds.unshift(branch.reason);
-                branch = branch.parent;
-            }
-            return conds.join(" && ");
-        }
-
-        let activeBranches = branches.filter(b => b.active);
-
-        function findLastChangeForVar(varId, branchId) {
-            let b = branchesMap.get(branchId);
-            while (b) {
-                let lastChange = report.filter(r => r.type == "change" && r.varId == varId && r.branchId == branchId).pop();
-                if (lastChange) return lastChange;
-                b = b.parent;
-            }
-            return null;
-        }
-
-        //2. warnings
-        let dupWarnings = report.filter(r => r.type === "warning").map(w => {
-            let op = getOriginalOp(w.cmdId);
-            let text = `Call to ${op.op}: ${getRealVarName(w.varId).print} expected to fit ${w.expectedRange}, but it is ${w.actualRange}`;
-            if (op.opCode === OpCode._output) {
-                text = `${getRealVarName(w.varId).print} expected to fit ${w.expectedRange}, but it is ${w.actualRange}`;
-            }
-            let line = op.line;
-            if (!line || line == -1) {
-                let lastChange = findLastChangeForVar(w.varId, w.branchId);
-                if (lastChange) {
-                    line = getOriginalOp(lastChange.cmdId).line;
-                }
-            }
-            return {
-                text: text,
-                line: line,
-                branchId: w.branchId
-            }
-        });
-        //  look for duplicates, unite
-        this.warnings = [];
-        for (let w of dupWarnings) {
-            if (w.isDuplicate) continue;
-            let duplicates = dupWarnings.filter(dw => dw.text == w.text && dw != w);
-            let branches = [w.branchId];
-            if (duplicates.length) {
-                for (let dup of duplicates) {
-                    branches.push(dup.branchId);
-                    dup.isDuplicate = true;
-                }
-            }
-            let conditions = branches.map(getFullBranchConditions)
-                .filter(c => c.trim().length);
-
-            let str = conditions.length === 1 ? conditions[0] : conditions.map(c => "(" + c + ")").join(" || ");
-            if (conditions.length == activeBranches.length) {
-                str = "";
-            }
-            if (str.length > 0) {
-                w.condition = str;
-                //w.text = "When " + str + ":\n " + w.text;
-            }
-            this.warnings.push(w);
-        }
-    }    
-}
-
-
-
-
 UIController.init(src, (src) => process(src));
+
+UIController.showTemps = false;

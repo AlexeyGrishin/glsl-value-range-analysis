@@ -8,8 +8,9 @@ class WarnHighlight
 {
     constructor(quill) {
         this.el = document.createElement("div");
-        //console.log(quill.root);
-        quill.root.parentNode.appendChild(this.el);
+        this.spanText = document.createElement("div");
+        quill.root.parentNode.appendChild(this.el);//, quill.root.parentNode.firstChild);
+        this.el.appendChild(this.spanText);
     }
 
     show(rect, text) {
@@ -21,6 +22,13 @@ class WarnHighlight
         this.el.style.width = rect.width + "px";
         this.el.style.height = rect.height + "px";
         this.el.title = text;
+
+        this.spanText.style.position = "absolute";
+        this.spanText.style.left = rect.width + "px";
+        this.spanText.style.top = 0 + "px";
+        this.spanText.style.height = rect.height + "px";
+        this.spanText.innerHTML = text;
+
     }
 
     hide() {
@@ -52,6 +60,7 @@ const UIController = {
         this.quill.formatText(0, this.quill.getLength(), "code-block", true);
         this.warnHighlights = [];
         this.quill.on('text-change', ()=>this.hideWarnings());
+        this.showTemp = false;
     },
 
     enableButton() {
@@ -86,10 +95,26 @@ const UIController = {
         }
     },
 
+    showLog(report) {
+        let out = [];
+        let alreadyPrintedLines = new Set();
+
+        for (let item of report.flow) {
+            if (item.isTemp && !this.showTemp) continue;
+            if (item.src && !alreadyPrintedLines.has(item.line)) {
+                alreadyPrintedLines.add(item.line);
+                out.push("<span class='src'>" + "".padStart(item.indent) + `//L${item.line}: ${item.src}` + "</span>");
+            }
+            if (item.branch) alreadyPrintedLines.clear();
+            let line = ("".padStart(item.indent) + item.text).padEnd(60);
+            if (item.linecomment) line += "//" + item.linecomment;
+            out.push(line);
+        }
+
+        this.result.innerHTML += '<hr>' + out.join("\n");
+    },
+
     process() {
-        /*let start = this.quill.getText().split("gl_FragColor.r")[0].length, length = "gl_FragColor.r".length;
-        let rect = this.quill.getBounds(start, length);
-*/
         this.result.innerHTML = "";
         this.status.innerHTML = "Processing...";
         try {
@@ -100,13 +125,15 @@ const UIController = {
                     if (w.condition) {
                         condition = '<em>' + w.condition + '</em>';
                     }
-                    this.result.innerHTML += `<p class='warning'><q>Line#${w.line}</q>${condition}${w.text}</p>`
+                    this.result.innerHTML += `<p class='warning'><c>L${w.line}: </c>${condition}${w.text}</p>`
                 }
             } else {
                 this.result.innerHTML += `<p class='success'>No Warnings!</p>`
             }
             this.status.innerHTML = "Done!";
             this.showWarnings(report.warnings);
+
+            this.showLog(report);
         }
         catch (e) {
             console.error(e);

@@ -23,7 +23,7 @@ const OpsMap = {
     "==": op(OpCode.eq, "boolean", devecCompare),
     "texture2D": op(OpCode.texture2D, "vec4", devecCommon),
     "length": op(OpCode.length, "float", devecCommon),
-    "step": op(OpCode.step, secondArg, devecCommon),
+    "step": op(OpCode.step, secondArg, devecMath),
 
     "vec4": op(undefined, "vec4", devecVecCtor),
     "vec3": op(undefined, "vec3", devecVecCtor),
@@ -84,9 +84,14 @@ export class VariablesMap {
         return this.vars.slice(1);
     }
 
+    isTemp(id) {
+        return this.getById(id).isTemp;
+    }
+
     addTempVariable(type) {
         let id = this.nextVarId++;
         let variable = {name: `tmp${id}`, id, type};
+        variable.isTemp = true;
         this.nameToVar.set(name, variable);
         this.vars.push(variable);
         return variable;   
@@ -444,7 +449,9 @@ export function devectorize(ops, map) {
             let vecSize = parseInt(variable.type.substring(3));
             let components = [variable];
             for (let i = 1; i < vecSize; i++) {
-                components.push(map.addVariable(variable.name + "." + Components.main[i], "float", variable.range));
+                let newVariable = map.addVariable(variable.name + "." + Components.main[i], "float", variable.range);
+                components.push(newVariable);
+                newVariable.isTemp = variable.isTemp;
             }
             map.rename(variable, variable.name + "." + Components.main[0]);
             variable.type = "float";

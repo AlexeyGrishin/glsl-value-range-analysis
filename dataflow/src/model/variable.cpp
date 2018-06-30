@@ -1,16 +1,19 @@
 #include "variable.h"
+#include "ops.h"
 
 Variable::Variable(BranchId branchId, CmdId cmdId, TypeRange initialRange) : initialRange(initialRange), lastChangeId(0), tail(NULL), isActiveFlag(true) {
 	for (int i = 0; i < MAX_RANGE_CHANGES; i++) changes[i] = NULL;
-	changeRange(branchId, cmdId, initialRange);
+	changeRange(branchId, cmdId, initialRange, TR_Operation, NULL);
 }
 
-void Variable::changeRange(BranchId branchId, CmdId cmdId, const TypeRange& range)
+void Variable::changeRange(BranchId branchId, CmdId cmdId, const TypeRange& range, TypeReason reason, RestoreRange* restorer)
 {
 	TypeRangeChange* change = new TypeRangeChange();
 	change->branchId = branchId;
 	change->cmdId = cmdId;
 	change->newRange = range;
+	change->restore = restorer;
+	change->reason = reason;
 	changes[lastChangeId++] = change;
 	BranchNode* node = tail;
 	while (node) {
@@ -54,7 +57,7 @@ void Variable::forget()
 	isActiveFlag = false;
 }
 
-const TypeRange* Variable::getRange(BranchId branchId)
+const TypeRange* Variable::getRange(BranchId branchId) const
 {
 	//todo: instead, go through changes from tail and look for branch. or maybe have this array dynamic/linked list. and do not init if it is not used anymore
 	//lookup is not so frequent, so it could be slower
@@ -66,7 +69,20 @@ const TypeRange* Variable::getRange(BranchId branchId)
 		node = node->prev;
 	}
 	return NULL;
+} 
+
+const TypeRangeChange* Variable::getLastChangeForBranch(BranchId branchId) const
+{
+	BranchNode* node = tail;
+	while (node) {
+		if (node->branchId == branchId) {
+			return node->change;
+		}
+		node = node->prev;
+	}
+	return NULL;
 }
+
 
 unsigned int Variable::getChangesCount() const
 {
@@ -88,6 +104,7 @@ bool Variable::isActive()
 Variable::~Variable()
 {
 	for (int i = 0; i < lastChangeId; i++) {
+		delete changes[i]->restore;
 		delete changes[i];
 	}
 	BranchNode* node = tail, *tmp;

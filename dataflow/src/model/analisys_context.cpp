@@ -1,4 +1,6 @@
 #include "analisys_context.h"
+#include "ops.h"
+#include "log.h"
 
 AnalisysContext::AnalisysContext() 
     : maxCreatedId(0), nextBranchId(1), warningsCount(0)
@@ -65,12 +67,33 @@ BranchId AnalisysContext::createBranch(BranchId parentId, CmdId cmdId, VarId var
         if (variable != NULL && variable->isActive()) {
             variable->initBranch(id, parentId);
             if (i == varId) {
-                variable->changeRange(id, cmdId, range);
+                variable->changeRange(id, cmdId, range, TR_Branch, NULL);
             }
         }
     }
+    //try to populate change up
+    populateChanges(cmdId, id, parentId, varId, range);
+
     branches[parentId]->active = false;
     return id;
+}
+
+void AnalisysContext::populateChanges(CmdId cmdId, BranchId branchId, BranchId parentBranchId, VarId varId, const TypeRange& changedRange)
+{
+    const Variable* lastUpdatedVar = variables[varId];
+    const TypeRangeChange* change = lastUpdatedVar->getLastChangeForBranch(parentBranchId);
+    if (change != NULL && change->restore != NULL)
+    {
+        RestoreRange* restorer = change->restore;
+        Variable* dep = variables[restorer->getDependent()];
+        const TypeRangeChange* depChange = dep->getLastChangeForBranch(parentBranchId);
+        if (depChange->cmdId < restorer->getChangedAt()) {
+            const TypeRange& newRange = restorer->restore(*(dep->getRange(parentBranchId)), changedRange);
+            dep->changeRange(branchId, cmdId, newRange, TR_BackPropagation, NULL);
+            populateChanges(cmdId, branchId, parentBranchId, restorer->getDependent(), newRange);
+        }
+    }
+
 }
 
 void AnalisysContext::addWarning(Command* command, BranchId branchId, VarId variable, unsigned int argNr, TypeRange expected, TypeRange actual)
@@ -132,6 +155,8 @@ Array<VariableChange> AnalisysContext::getChanges() const
                         outChange.branchId = change.branchId;
                         outChange.cmdId = change.cmdId;
                         outChange.newRange = change.newRange;
+                        outChange.revertable = change.restore != NULL;
+                        outChange.reason = change.reason;
                         ai++;
                     }
                 }

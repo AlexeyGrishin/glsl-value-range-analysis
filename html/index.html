@@ -17,7 +17,52 @@
         padding: 10px;
       }
 
-      .highlight-warning {background: red; opacity: 0.3}
+      .enter .ql-container.ql-snow .ql-editor  {
+        position: relative;
+      }
+      .enter .ql-container.ql-snow  {
+        background-color: black;
+      }
+
+      .enter .ql-snow .ql-editor pre.ql-syntax {
+        background-color: transparent;
+      }
+
+      .result pre .src {
+        color: #888;
+      }
+
+      .highlight-warning {
+        background: rgba(255,0,0,0.3);
+        pointer-events: none;
+      }
+
+      .highlight-warning::before {
+        content: "⚠";
+        color: yellow;
+        font-weight: bold;
+        position: relative;
+        left: -20px;
+        width: 20px;
+        height: 100%;
+        display: block;
+        pointer-events: all;
+        background: rgba(255,0,0,0.3)
+      }
+
+      .highlight-warning > div {
+        color: white;
+        white-space: nowrap;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 75%;
+        padding-left: 20px;
+        background: rgba(255,0,0,0.3);
+        visibility: hidden;
+      }
+
+      .highlight-warning:hover > div {
+        visibility: visible;
+      }
 
       .enter textarea {
         resize: vertical;

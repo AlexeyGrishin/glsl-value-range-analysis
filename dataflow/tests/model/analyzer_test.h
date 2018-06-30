@@ -30,8 +30,9 @@ void print(DataFlowAnalyzer& analyzer) {
 
     for (int i = 0; i < changes.count; i++) {
         VariableChange& c = changes.items[i];
-        printf("@@ var %d @ %d, cmd %d, change to %f-%f\n", 
-            c.varId, c.branchId, c.cmdId, c.newRange.left, c.newRange.right
+        printf("@@ var %d @ %d, cmd %d, change to %f-%f %s\n", 
+            c.varId, c.branchId, c.cmdId, c.newRange.left, c.newRange.right,
+            c.revertable ? "[revertable]" : ""
         );
     }
 
@@ -88,6 +89,61 @@ TEST(Analyzer, SimpleScenario)
 
     //assert - warnings
     //assert - variable types
+}
+
+TEST(Analyzer, Test_Dependencies) {
+        DataFlowAnalyzer analyzer;
+
+    Command cmdDefine1(1, _define_op);      //var1 = [0,1]
+    cmdDefine1.addArgument(1);
+    cmdDefine1.setRange(TypeRange(0, 1));
+    
+    Command cmdDefine2(2, _define_op);      //var2 = 0.5
+    cmdDefine2.addArgument(2);
+    cmdDefine2.setRange(TypeRange(0.5));
+    
+    Command cmdDefine3(3, _define_op);      //var3
+    cmdDefine3.addArgument(3);
+
+    Command cmdDefine4(4, _define_op);      //var4
+    cmdDefine4.addArgument(4);
+
+    Command cmdPlus(5, plus_op);            //var3 = var1+var2
+    ADDARG4(cmdPlus, 3);
+    ADDARG4(cmdPlus, 1);
+    ADDARG4(cmdPlus, 2);
+
+    Command cmdDefine5(6, _define_op);      //var5= 1
+    cmdDefine5.addArgument(5);
+    cmdDefine5.setRange(TypeRange(1));
+
+    Command cmdLt(7, lt_op);                //var4 = var3<1
+    cmdLt.addArgument(4);
+    ADDARG4(cmdLt, 3);
+    ADDARG4(cmdLt, 5);
+
+    analyzer.processCommand(&cmdDefine1);
+    analyzer.processCommand(&cmdDefine2);
+    analyzer.processCommand(&cmdDefine3);
+    analyzer.processCommand(&cmdDefine4);
+    analyzer.processCommand(&cmdPlus);
+    analyzer.processCommand(&cmdDefine5);
+    analyzer.processCommand(&cmdLt);
+
+    print(analyzer);
+
+    //compare result
+    ASSERT_EQ(TypeRange(1), *analyzer.getRange(1, 4));
+    ASSERT_EQ(TypeRange(0), *analyzer.getRange(2, 4));
+
+    //compared value (var3)
+    ASSERT_EQ(TypeRange(0.5,1,INCLUDE_LEFT), *analyzer.getRange(1, 3));
+    ASSERT_EQ(TypeRange(1,1.5), *analyzer.getRange(2, 3));
+
+    //dependent value (var1)
+    ASSERT_EQ(TypeRange(0,0.5,INCLUDE_LEFT), *analyzer.getRange(1, 1));
+    ASSERT_EQ(TypeRange(0.5, 1), *analyzer.getRange(2, 1));
+
 }
 
 
@@ -203,3 +259,56 @@ TEST(Analyzer, TestBranches_If) {
     print(analyzer);
 }
 
+
+
+TEST(Analyzer, TestStep) {
+    DataFlowAnalyzer analyzer;
+
+    Command cmdDefine1(1, _define_op);      //var1 = [0,1]
+    cmdDefine1.addArgument(1);
+    cmdDefine1.setRange(TypeRange(0, 1));
+    
+    Command cmdDefine2(2, _define_op);      //var2 = 0.5
+    cmdDefine2.addArgument(2);
+    cmdDefine2.setRange(TypeRange(0.5));
+    
+    Command cmdDefine3(3, _define_op);      //var3
+    cmdDefine3.addArgument(3);
+
+    Command cmdDefine4(4, _define_op);      //var4
+    cmdDefine4.addArgument(4);
+
+    Command cmdStep(5, step_op);        //var3, var4, _, _ = step(0.5, var1, var1, _, _)
+    cmdStep.addArgument(3);
+    cmdStep.addArgument(4);
+    cmdStep.addArgument(0);
+    cmdStep.addArgument(0);
+    cmdStep.addArgument(2);
+    cmdStep.addArgument(0);
+    cmdStep.addArgument(0);
+    cmdStep.addArgument(0);
+    cmdStep.addArgument(1);
+    cmdStep.addArgument(1);
+    cmdStep.addArgument(0);
+    cmdStep.addArgument(0);
+
+    analyzer.processCommand(&cmdDefine1);
+    analyzer.processCommand(&cmdDefine2);
+    analyzer.processCommand(&cmdDefine3);
+    analyzer.processCommand(&cmdDefine4);
+    analyzer.processCommand(&cmdStep);
+
+    print(analyzer);
+    ASSERT_EQ(5, analyzer.getBranches().count);
+
+    //todo: for now it is ok, but actually I need ALL variant combinations, like var3=1, var4=0, etc.
+    ASSERT_EQ(TypeRange(0), *analyzer.getRange(1, 3));
+    ASSERT_EQ(TypeRange(0), *analyzer.getRange(1, 4));
+    ASSERT_EQ(TypeRange(1), *analyzer.getRange(2, 3));
+    ASSERT_EQ(TypeRange(1), *analyzer.getRange(2, 4));
+    ASSERT_EQ(TypeRange(0), *analyzer.getRange(3, 3));
+    ASSERT_EQ(TypeRange(0), *analyzer.getRange(3, 4));
+    ASSERT_EQ(TypeRange(1), *analyzer.getRange(4, 3));
+    ASSERT_EQ(TypeRange(1), *analyzer.getRange(4, 4));
+
+}

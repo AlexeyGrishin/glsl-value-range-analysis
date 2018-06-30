@@ -32,7 +32,7 @@ ProcessResult DataFlowAnalyzer::processCommand(Command* command)
                 if (ops.isKnown(command->opCode)) {
                     if (!branch->skip) ops.createBranches(command->opCode, local);
                 } else {
-                    printf("%d = NULL\n", command->opCode);
+                    //printf("%d = NULL\n", command->opCode);
                     res = PR_ERROR;
                 }
                 break;

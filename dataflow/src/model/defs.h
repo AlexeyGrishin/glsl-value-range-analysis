@@ -1,11 +1,5 @@
+//todo: move here structs and enums
 #pragma once
-#ifdef TEST
-#include "stdio.h"
-#else
-#define printf(...) 
-#define fflush(...)
-#endif
-
 
 #define MAX_RANGE_CHANGES 100
 #define MAX_ARGS 14
@@ -26,6 +20,12 @@ struct Array {
 
     void allocate(unsigned int count) { items = new T[count]; this->count = count; }
     void free() { delete[] items; }
+};
+
+enum TypeReason {
+    TR_Operation = 1,
+    TR_Branch = 2,
+    TR_BackPropagation = 3
 };
 
 #define MAIN_BRANCH 0
