@@ -6,14 +6,16 @@
 
 enum ProcessResult {
     PR_OK = 0,
-    PR_ERROR = 1
+    PR_ERROR = 1,
+
+    PR_UNKNOWN_OP = 2
 };
 
 class DataFlowAnalyzer 
 {
 private:
     AnalisysContext context;
-    OpsRegistry ops;
+    OpsRegistry& ops;
     LocalContext local;
 public:
     DataFlowAnalyzer();

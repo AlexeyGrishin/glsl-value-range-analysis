@@ -7,6 +7,10 @@
 #define MAX_BRANCHES 100
 #define MAX_WARNINGS 100
 
+#define MAX(a,b) (((a) > (b)) ? (a) : (b))
+#define MIN(a,b) (((a) < (b)) ? (a) : (b))
+
+
 typedef unsigned int CmdId;
 typedef unsigned int BranchId;
 typedef unsigned int VarId;

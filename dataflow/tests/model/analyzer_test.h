@@ -9,7 +9,7 @@
 void print(DataFlowAnalyzer& analyzer) {
     Array<Warning> warnings = analyzer.getWarnings();
 
-    for (int i = 0; i < warnings.count; i++) {
+    for (unsigned int i = 0; i < warnings.count; i++) {
         Warning& w = warnings.items[i];
         printf("!! warning when call %d@branch#%d: arg %d(var %d) has range %f-%f but expected %f-%f\n", 
             w.call, w.branchId, w.argumentNr, w.varId, 
@@ -19,7 +19,7 @@ void print(DataFlowAnalyzer& analyzer) {
 
     Array<Branch> branches = analyzer.getBranches();
 
-    for (int i = 0; i < branches.count; i++) {
+    for (unsigned int i = 0; i < branches.count; i++) {
         Branch& b = branches.items[i];
         printf("-- branch %d (parent %d, %s) created for var %d changed in %d\n", b.id, b.parentId, b.active ? "active" : "inactive", b.varId, b.cmdId);
     }
@@ -28,7 +28,7 @@ void print(DataFlowAnalyzer& analyzer) {
     Array<VariableChange> changes = analyzer.getChanges();
 
 
-    for (int i = 0; i < changes.count; i++) {
+    for (unsigned int i = 0; i < changes.count; i++) {
         VariableChange& c = changes.items[i];
         printf("@@ var %d @ %d, cmd %d, change to %f-%f %s\n", 
             c.varId, c.branchId, c.cmdId, c.newRange.left, c.newRange.right,

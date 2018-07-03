@@ -3,7 +3,7 @@
 #include "defs.h"
 
 DataFlowAnalyzer::DataFlowAnalyzer()
-    : context(), ops(), local(&context)
+    : context(), ops(OpsRegistry::instance()), local(&context)
 {
     
 }
@@ -33,7 +33,7 @@ ProcessResult DataFlowAnalyzer::processCommand(Command* command)
                     if (!branch->skip) ops.createBranches(command->opCode, local);
                 } else {
                     //printf("%d = NULL\n", command->opCode);
-                    res = PR_ERROR;
+                    res = PR_UNKNOWN_OP;
                 }
                 break;
         }

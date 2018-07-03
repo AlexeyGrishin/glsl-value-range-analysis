@@ -6,6 +6,7 @@
 #include "model/command.h"
 #include "model/analyzer.h"
 #include "model/ops.h"
+#include "model/ops/builtin_ops.h"
 
 namespace client {
     [[cheerp::genericjs]]
@@ -110,10 +111,11 @@ public:
 
 [[cheerp::genericjs]] void consoleLog(const char* str)
 {
-    	client::console.log(str);
+        client::console.log(str);
 }
 
 int main() {
     //nothing to do
+    registerBuiltinOps();
 }
 

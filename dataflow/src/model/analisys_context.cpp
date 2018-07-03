@@ -32,7 +32,7 @@ Variable& AnalisysContext::getVariable(VarId id) const
 
 Branch* AnalisysContext::getFirstBranch() const
 {
-    for (int i = 0; i < nextBranchId; i++) {
+    for (unsigned int i = 0; i < nextBranchId; i++) {
         if (branches[i] != NULL && branches[i]->active) return branches[i];
     }
     return NULL;
@@ -45,7 +45,7 @@ BranchId AnalisysContext::getLastBranchId() const
 
 Branch* AnalisysContext::getNextBranch(Branch* branch) const
 {
-    for (int i = branch->id+1; i < nextBranchId; i++) {
+    for (unsigned int i = branch->id+1; i < nextBranchId; i++) {
         if (branches[i] != NULL && branches[i]->active) return branches[i];
     }
     return NULL;    
@@ -62,7 +62,7 @@ BranchId AnalisysContext::createBranch(BranchId parentId, CmdId cmdId, VarId var
     BranchId id = nextBranchId++;
     Branch* branch = new Branch(id, parentId, cmdId, varId);
     branches[id] = branch;
-    for (int i = 0; i < maxCreatedId; i++) {
+    for (unsigned int i = 0; i < maxCreatedId; i++) {
         Variable* variable = variables[i];
         if (variable != NULL && variable->isActive()) {
             variable->initBranch(id, parentId);
@@ -112,7 +112,7 @@ void AnalisysContext::addWarning(Command* command, BranchId branchId, VarId vari
 Array<Warning> AnalisysContext::getWarnings() const
 {
     Array<Warning> array(warningsCount);
-    for (int i = 0; i < warningsCount; i++) {
+    for (unsigned int i = 0; i < warningsCount; i++) {
         array.items[i] = *warnings[i];
     }
     return array;
@@ -121,7 +121,7 @@ Array<Warning> AnalisysContext::getWarnings() const
 Array<Branch> AnalisysContext::getBranches() const
 {
     Array<Branch> array(nextBranchId);
-    for (int i = 0; i < nextBranchId; i++) {
+    for (unsigned int i = 0; i < nextBranchId; i++) {
         array.items[i] = *branches[i];
     }
     return array;
@@ -131,7 +131,7 @@ Array<VariableChange> AnalisysContext::getChanges() const
 {
     unsigned int total = 0;
     CmdId maxCmdId = 0;
-    for (int i = 0; i < maxCreatedId; i++) {
+    for (unsigned int i = 0; i < maxCreatedId; i++) {
         Variable* variable = variables[i];
         if (variable != NULL) {
             total += variable->getChangesCount();
@@ -144,10 +144,10 @@ Array<VariableChange> AnalisysContext::getChanges() const
     Array<VariableChange> array(total);
     int ai = 0;
     for (CmdId cmdId = 0; cmdId <= maxCmdId; cmdId++) {
-        for (int i = 0; i < maxCreatedId; i++) {
+        for (unsigned int i = 0; i < maxCreatedId; i++) {
             Variable* variable = variables[i];
             if (variable != NULL) {
-                for (int ci = 0; ci < variable->getChangesCount(); ci++) {
+                for (unsigned int ci = 0; ci < variable->getChangesCount(); ci++) {
                     const TypeRangeChange& change = variable->getChange(ci);
                     if (change.cmdId == cmdId) {
                         VariableChange& outChange = array.items[ai];

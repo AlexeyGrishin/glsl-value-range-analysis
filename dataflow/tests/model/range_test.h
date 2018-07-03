@@ -2,7 +2,7 @@
 #include "gtest/gtest.h"
 #include "model/range.h"
 #include "stdio.h"
-#include "model/range_ops.h"
+#include "model/ops/range_ops.h"
 
 std::ostream& operator<<(std::ostream& stream, TypeRange const& range)
 {
@@ -219,4 +219,72 @@ TEST(RangeOps, GetRight_Outside) {
 
     ASSERT_EQ(r1, RangeOps::getRightExcluding(r1, -1));
     ASSERT_FALSE(RangeOps::getRightExcluding(r1, 15).isValid());
+}
+
+TEST(RangeOps, Min) {
+    TypeRange r1(0, 20);
+    TypeRange r2(5, 15);
+    ASSERT_EQ(TypeRange(0, 15), RangeOps::min(r1, r2));
+}
+
+TEST(RangeOps, Min_Inf) {
+    TypeRange r1(-INFINITY, 20);
+    TypeRange r2(5, 15);
+    ASSERT_EQ(TypeRange(-INFINITY, 15), RangeOps::min(r1, r2));
+}
+
+TEST(RangeOps, Clamp) {
+    TypeRange r1(0, 20);
+    ASSERT_EQ(TypeRange(5, 15), RangeOps::clamp(r1, TypeRange(5), TypeRange(15)));
+}
+
+TEST(RangeOps, Length_2) {
+    TypeRange r1(1, 3);
+    TypeRange r2(0, 4);
+    TypeRange zero(0, 0);
+    ASSERT_EQ(TypeRange(1, 5), RangeOps::length(r1, r2, zero, zero));
+}
+
+TEST(RangeOps, Length_2_NegativeRange) {
+    TypeRange r1(-1, -3);
+    TypeRange r2(-2, 4);
+    TypeRange zero(0, 0);
+    ASSERT_EQ(TypeRange(1, 5), RangeOps::length(r1, r2, zero, zero));
+}
+
+TEST(RangeOps, Floor) {
+    TypeRange r1(1.3, 4.9);
+    ASSERT_EQ(TypeRange(1, 4), RangeOps::floor(r1));
+}
+
+TEST(RangeOps, Fract) {
+    TypeRange r1(1.3, 4.9);
+    ASSERT_EQ(TypeRange(0, 1, INCLUDE_LEFT), RangeOps::fract(r1));
+}
+
+TEST(RangeOps, Mix_Const) {
+    TypeRange r1(0, 10);
+    TypeRange r2(20, 40);
+    TypeRange mix(0.5);
+    ASSERT_EQ(TypeRange(5, 30), RangeOps::mix(r1, r2, mix));
+}
+
+TEST(RangeOps, Mix_Full) {
+    TypeRange r1(0, 10);
+    TypeRange r2(20, 40);
+    TypeRange mix(0, 1);
+    ASSERT_EQ(TypeRange(0, 40), RangeOps::mix(r1, r2, mix));
+}
+
+TEST(RangeOps, Mix_Full_Includes) {
+    TypeRange r1(0, 40);
+    TypeRange r2(10, 20);
+    TypeRange mix(0, 1);
+    ASSERT_EQ(TypeRange(0, 40), RangeOps::mix(r1, r2, mix));
+}
+
+TEST(RangeOps, Mix_Range) {
+    TypeRange r1(0, 40);
+    TypeRange r2(10, 20);
+    ASSERT_EQ(TypeRange(0, 20), RangeOps::mix(r1, r2, TypeRange(0, 0.5)));
 }
