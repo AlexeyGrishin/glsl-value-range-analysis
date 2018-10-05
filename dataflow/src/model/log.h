@@ -1,5 +1,5 @@
 #pragma once
-#define NOLOG
+//#define NOLOG
 
 #ifdef TEST
   #include "stdio.h"
@@ -11,6 +11,7 @@
     #include <cheerp/clientlib.h>
     #include <cheerp/client.h>
     [[cheerp::genericjs]] void consoleLog(const char*);
+    [[cheerp::genericjs]] void consoleLog(unsigned int);
     #define printf(x) consoleLog(x) 
     #define fflush(...)
   #endif

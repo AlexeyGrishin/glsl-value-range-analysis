@@ -25,14 +25,37 @@ void main() {
 
 var src = `
 uniform sampler2D sampler;
+uniform vec2 textureCoord /*0,1*/;
+
+void main() {
+
+    float a = 0.2;
+    for (int i = 0; i < 5; i++) {
+        a += 0.2;
+    }
+    gl_FragColor = vec4(a);
+
+}
+`;
+
+var src3 = `
+uniform sampler2D sampler;
+uniform vec2 textureCoord /*0,1*/;
 uniform float a;
 uniform float b/*0,1*/; 
 uniform vec3 c/*-1,1*/;
 
+vec2 mrfn(vec2 v) {
+    if (v.x > 0.5 || v.y > 0.5) {
+        return v/2.;
+    }
+    return clamp(v, 0, 0.5);
+}
+
 void main() {
     vec4 color = texture2D(sampler, vec2(0.5));
     vec2 k;
-    k.xy = sin(color+a).rg;
+    k.xy = mrfn(sin(color+a).rg);
     if (k.x > 0.5) {
         gl_FragColor.r = k.x * 2. - b;
     } else {
@@ -76,13 +99,13 @@ function process(src) {
     function op2string(op) {
         return `${op.line ? (op.line + ': ') : ''}${op.out.map(idToStr).join(",")} = ${op.op}(${op.args.map(idToStr).join()}${op.range ? (',' + op.range) : ''})`
     }
+    let pass1 = convert(tree, map);
+    pass1.push({op: "_output", out: [], args: [varPtr(map.getVariable("gl_FragColor"))]});
     if (DEBUG) {
-        console.groupCollapsed("tree");
+        console.group("tree");
         printNode(tree);
         console.groupEnd();
     }
-    let pass1 = convert(tree, map);
-    pass1.push({op: "_output", out: [], args: [varPtr(map.getVariable("gl_FragColor"))]});
     if (DEBUG) {
         console.groupCollapsed("pass1");
         console.log(pass1.map(op2string).join("\n"));
@@ -96,7 +119,7 @@ function process(src) {
     }
     let pass3 = addVarsInOut(pass2, map);
     if (DEBUG) {
-        console.group("pass3");
+        console.groupCollapsed("pass3");
         console.log(pass3.map(op2string).join("\n"));
         console.groupEnd();
     }    
@@ -114,6 +137,7 @@ function process(src) {
     //console.log(pass4.map(JSON.stringify).join("\n"));
     let flow = new DataFlowApi();
     flow.init();
+    //return;//todo temp
     for (let op of pass4) {
         //console.log('process', op);
         let ret = flow.addCommand(op.cmdId, op.opCode, op.args, op.range.left, op.range.right, op.range.flag);
@@ -155,4 +179,4 @@ window.DataFlowApi.promise.then(() => {
 
 UIController.init(src, (src) => process(src));
 
-UIController.showTemps = false;
+UIController.showTemp = true;

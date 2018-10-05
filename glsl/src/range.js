@@ -31,7 +31,7 @@ export default class Range {
 
     static create(type, rangeAsStr) {
         if (type === "boolean") return new Range(0, 1, INCLUDE_BOTH);
-        if (type !== "float") return Range.none;
+        if (type !== "float" && type !== "integer") return Range.none;
         if (typeof rangeAsStr === "number") return new Range(rangeAsStr, rangeAsStr, INCLUDE_BOTH);
         if (!rangeAsStr) return new Range(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, INCLUDE_BOTH);
         let [left,right] = rangeAsStr.split(",");

@@ -35,6 +35,7 @@ export default OpCode = {
     _ifeq: 33,
     _endif: 34,
     _output: 35,
-    _function: 36,
-    _return: 37
+    _watch: 36,
+    _ignore: 37,
+    _endwatch: 38
 }

@@ -114,6 +114,11 @@ public:
         client::console.log(str);
 }
 
+[[cheerp::genericjs]] void consoleLog(unsigned int i)
+{
+        client::console.log(i);
+}
+
 int main() {
     //nothing to do
     registerBuiltinOps();

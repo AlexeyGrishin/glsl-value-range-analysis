@@ -137,6 +137,7 @@ BRANCH_OPERATION(LtOp, lt_op, {
 }, {
     TypeRange left = ctx.get(1);
     TypeRange right = ctx.get(5);
+    //todo: what if expression is always true for current branch? don't need to branch in this case
     if (right.isSingle()) {
         ctx.createBranch(1, RangeOps::getLeftExcluding(left, right.left));
         ctx.createBranch(1, RangeOps::getRightIncluding(left, right.left));
@@ -270,10 +271,10 @@ OPERATION(MixOp, mix_op, {
         ctx.addWarning(12, expected);
     }
     //todo: implement all cases. for now - only vec4 a = mix(vec4, vec4, float)
-    ctx.set(0, RangeOps::clamp(ctx.get(4), ctx.get(8), aArg));
-    if (ctx.isDefined(1)) ctx.set(1, RangeOps::clamp(ctx.get(5), ctx.get(9), aArg));
-    if (ctx.isDefined(2)) ctx.set(2, RangeOps::clamp(ctx.get(6), ctx.get(10), aArg));
-    if (ctx.isDefined(3)) ctx.set(3, RangeOps::clamp(ctx.get(7), ctx.get(11), aArg));
+    ctx.set(0, RangeOps::mix(ctx.get(4), ctx.get(8), aArg));
+    if (ctx.isDefined(1)) ctx.set(1, RangeOps::mix(ctx.get(5), ctx.get(9), aArg));
+    if (ctx.isDefined(2)) ctx.set(2, RangeOps::mix(ctx.get(6), ctx.get(10), aArg));
+    if (ctx.isDefined(3)) ctx.set(3, RangeOps::mix(ctx.get(7), ctx.get(11), aArg));
 });
 
 OPERATION(NormalizeOp, normalize_op, {
@@ -304,6 +305,12 @@ OPERATION(DotOp, dot_op, {
     ctx.set(0, RangeOps::dot(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8));
 });
 
+//todo: vec2/vec3/vec4
+//todo: tests
+OPERATION(OrOp, or_op, {
+    ctx.set(0, ctx.get(1) || ctx.get(5));
+});
+
 REGISTER_START(registerBuiltinOps)
 REGISTER(PlusOp)
 REGISTER(MinusOp)
@@ -328,4 +335,5 @@ REGISTER(MixOp)
 REGISTER(NormalizeOp)
 REGISTER(UnaryMinusOp)
 REGISTER(DotOp)
+REGISTER(OrOp)
 REGISTER_END

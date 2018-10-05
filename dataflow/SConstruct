@@ -5,6 +5,6 @@ env.Append(LIBPATH 		= '/usr/local/lib')
 env.Append(CPPFLAGS 	= ['-Wall', '-DTEST'])
 env.Append(CXXFLAGS 	= ['-std=c++14'])
 env.Append(CPPPATH      = "src")
-SRC = Glob("src/model/*.cpp") + Glob("tests/*.cpp")
+SRC = Glob("src/model/*.cpp") + Glob("tests/*.cpp") + Glob("src/model/ops/*.cpp")
 
 env.Program(target = 'dataflow_tests', source = SRC)

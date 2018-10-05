@@ -36,7 +36,8 @@ enum OpCode {
     _ifeq_op = 33,
     _endif_op = 34,
     _output_op = 35,
-    _function_op = 36,
-    _return_op = 37
+    _watch_op = 36,
+    _ignore_op = 37,
+    _endwatch_op = 38
 };
-#define MAX_OPS 38
+#define MAX_OPS 39

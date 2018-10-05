@@ -99,8 +99,8 @@ TypeRange RangeOps::length(const TypeRange& arg1, const TypeRange& arg2, const T
 
 TypeRange RangeOps::abs(const TypeRange& arg1)
 {
-    double leftAbs = ::abs(arg1.left);
-    double rightAbs = ::abs(arg1.right);
+    double leftAbs = ::fabs(arg1.left);
+    double rightAbs = ::fabs(arg1.right);
     double maxAbs = MAX(leftAbs, rightAbs);
     double minAbs;
     if (arg1.includes(0)) {

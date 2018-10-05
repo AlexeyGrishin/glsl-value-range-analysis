@@ -43,6 +43,8 @@ struct TypeRange {
     bool operator==(const TypeRange& another) const;
     bool operator!=(const TypeRange& another) const;
 
+    operator bool() const;
+
     #ifdef TEST
     void print() const {
         if (flag == IGNORE) {

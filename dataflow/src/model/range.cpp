@@ -77,6 +77,11 @@ bool TypeRange::operator!=(const TypeRange& another) const
     return left != another.left || right != another.right || flag != another.flag;
 }
 
+TypeRange::operator bool() const
+{
+    return isSingle() && left == 0 ? false : true;
+}
+
 TypeRange& TypeRange::operator=(const TypeRange& another)
 {
     left = another.left;

@@ -9,6 +9,7 @@ export default class HumanReport
             let variable = map.getById(varId);
             if (!variable) return {print: "?unknown?", highlight: null};
             let name = variable.name;
+            //todo: function arguments and local fns
             if (name.indexOf(".") !== -1) {
                 let [main, suffix] = name.split(".");
                 let foundMain = Components.main.split('').some(ms => src.indexOf(`${main}.${ms}`) != -1);
@@ -155,6 +156,7 @@ export default class HumanReport
                         isTemp: map.isTemp(c.varId),
                         text: getRealVarName(c.varId).print + " = " + c.range.toString()
                     }
+                    //todo: add comment about function called
                     let comments = [];
                     if (c.revertable) {
                         comments.push("revertable");

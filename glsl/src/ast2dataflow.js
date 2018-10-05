@@ -9,6 +9,7 @@ function op(opCode, outTypeFn, devectorize) {
 function firstArg(inTypes) { return inTypes[0]; }
 function secondArg(inTypes) { return inTypes[1]; }
 
+//todo[grishin]: add all new functions, already supported
 const OpsMap = {
     "+": op(OpCode.plus, firstArg, devecMath),
     "-": op(OpCode.minus, firstArg, devecMath),
@@ -21,9 +22,11 @@ const OpsMap = {
     "<=": op(OpCode.lte, "boolean", devecCompare),
     ">=": op(OpCode.gte, "boolean", devecCompare),
     "==": op(OpCode.eq, "boolean", devecCompare),
+    "||": op(OpCode.or, "boolean", devecCompare),
     "texture2D": op(OpCode.texture2D, "vec4", devecCommon),
     "length": op(OpCode.length, "float", devecCommon),
     "step": op(OpCode.step, secondArg, devecMath),
+    "clamp": op(OpCode.clamp, firstArg, devecMath),
 
     "vec4": op(undefined, "vec4", devecVecCtor),
     "vec3": op(undefined, "vec3", devecVecCtor),
@@ -35,11 +38,15 @@ const OpsMap = {
     "_ifeq": op(OpCode._ifeq, undefined, devecCommon),
     "_endif": op(OpCode._endif, undefined, devecCommon),
     "_forget": op(OpCode._forget),
-    "_output": op(OpCode._output, undefined, devecCommon)
+    "_output": op(OpCode._output, undefined, devecCommon),
+
+    "_watch": op(OpCode._watch, undefined, devecNothing),
+    "_endwatch": op(OpCode._endwatch, undefined, devecNothing),
+    "_ignore": op(OpCode._ignore, undefined, devecNothing)
 };
 
 //todo: type enums?
-function predictOutType(operator, inTypes) {
+function predictOutBuiltinType(operator, inTypes) {
     let knownOp = OpsMap[operator];
     if (knownOp) return knownOp.getOutType(inTypes);
     return undefined;
@@ -159,9 +166,81 @@ export function varPtr(varId, part) {
 export function convert(ast, map = new VariablesMap()) {
     let out = [];
 
-    let currentFn = null;
+    //todo: create class
+    let customFunctions = new Map();
+    let customFunctionsByName = new Map(); 
+    let functionCallsCounter = 9600;
+    let functionCallStack = [];
+
     function insideFunction() {
-        return currentFn != null;
+        return functionCallStack.length > 0;
+    }
+
+    function functionId(name, types) {
+        return name + "(" + types.join(",") + ")";
+    }
+
+    function isCustomFunction(functionName) {
+        return customFunctionsByName.has(functionName);
+    }
+
+    function predictOutType(operator, inTypes) {
+        if (isCustomFunction(operator)) {
+            return customFunctions.get(functionId(operator, inTypes)).outType;
+        } else {
+            return predictOutBuiltinType(operator, inTypes);
+        }
+    }
+
+    function getActualVariableName(name, isDeclaration) {
+        if (!insideFunction()) return name;
+
+        if (isDeclaration) {
+            let currentCall = functionCallStack[functionCallStack.length-1];
+            let newName = currentCall.namePrefix + "_" + name;
+            currentCall.renamedVars.set(name, newName);
+            return newName;
+        }
+
+        for (let call of functionCallStack.reverse()) {
+            if (call.renamedVars.has(name)) {
+                return call.renamedVars.get(name);
+            }
+        }
+        return name;
+    }
+
+    function callCustom(name, outVar, argVars) {
+        const fid = functionId(name, argVars.map(vptr => map.getById(vptr).type));
+        const callId = functionCallsCounter++;
+
+        //todo: check recrusive calls here
+
+        functionCallStack.push({
+            callId, 
+            functionId: fid, 
+            namePrefix: fid+":"+callId, 
+            renamedVars: new Map(),
+            returnVar: outVar
+        });
+        let customFunction = customFunctions.get(fid);
+        out.push({op: "_watch", out: [], args: [], range: TypeRange.create("float", callId), line: customFunction.node.token.line})
+
+        let i = 0;
+        for (let fnArgName of customFunction.inArgNames) {
+            let newName = getActualVariableName(fnArgName, true);
+            let variable = map.addVariable(newName, customFunction.inTypes[i], undefined);
+            //todo: check
+            out.push({op: "=", out: [varPtr(variable)], args: [varPtr(argVars[i])], line: customFunction.node.token.line});    
+            i++;
+        }
+
+        process(customFunction.body);
+        
+        out.push({op: "_endwatch", out: [], args: [], range: TypeRange.create("float", callId), line: customFunction.node.token.line})
+
+        functionCallStack.pop();
+
     }
 
     //returns variable id
@@ -170,7 +249,11 @@ export function convert(ast, map = new VariablesMap()) {
         let args = node.children.slice(1);
         let argVars = args.map(process);
         let variable = map.addTempVariable(predictOutType(functionName, argVars.map(vptr => map.getById(vptr).type)));
-        out.push({op: functionName, out: [varPtr(variable)], args: argVars, line: node.token.line});
+        if (isCustomFunction(functionName)) {
+            callCustom(functionName, variable, argVars);
+        } else {
+            out.push({op: functionName, out: [varPtr(variable)], args: argVars, line: node.token.line});
+        }
         return varPtr(variable);
     }
 
@@ -195,7 +278,7 @@ export function convert(ast, map = new VariablesMap()) {
     function declvar(node) {
         let c = node.children;
         let decllist = c[c.length-1];
-        let name = decllist.children[0].token.data;
+        let name = getActualVariableName(decllist.children[0].token.data, true);
         let type = c[c.length-2].token.data;
         //nothing else matters
         let possibleRange = undefined;
@@ -229,15 +312,45 @@ export function convert(ast, map = new VariablesMap()) {
         return varPtr(variable);
     }
 
+    //todo: needed?
+    function renameVariables(node, fnName) {
+        if (node.type === "ident") {
+            node.token.data = fnName + "$" + node.token.data;
+            if (node.data) {
+                node.data = node.token.data;
+            }
+        }
+        if (node.type === "call") {
+            node.children.slice(1).forEach(c => renameVariables(c, fnName));
+            return;
+        }
+        if (node.children) node.children.forEach(c => renameVariables(c, fnName));
+    }
+
+    //todo: in, out, inout modifiers
     function declfn(node) {
+        let outType = node.children[node.children.length-2].token.data;
         let fn = node.children[node.children.length-1];
         let fnName = fn.children[0].token.data;
-        currentFn = fnName;
+        let stmtList = fn.children[fn.children.length-1];
         if (fnName === 'main') {
-            let stmtList = fn.children[fn.children.length-1];
             process(stmtList);
+        } else {
+            let declArgs = fn.children[1].children;
+            let inTypes = declArgs.map(decl => decl.token.data);
+            let customFn = {
+                node,
+                outType,
+                inTypes,
+                name: fnName,
+                //todo: bad here is that I parse all manually, not using "process"
+                inArgNames: declArgs.map(decl => decl.children[decl.children.length-1].children[0].token.data),
+                body: stmtList
+            };
+            customFunctionsByName.set(fnName, customFn);
+            customFunctions.set(functionId(fnName, inTypes), customFn);
+            console.log(customFunctions);
         }
-        currentFn = null;
     }
 
     function decl(node) {
@@ -258,13 +371,15 @@ export function convert(ast, map = new VariablesMap()) {
         switch (left.type) {
             case "operator":
                 if (left.token.data === ".") {
-                    variable = map.getVariable(left.children[0].token.data);
+                    //todo: introduce helper for getVaraible that always calls to getActualVariableName
+                    variable = map.getVariable(getActualVariableName(left.children[0].token.data));
                     part = left.children[1].token.data;
                     //console.log('get id for ', left.children[0].token.data, '=>', varId)
                 }
                 break;
             case "ident":
-                variable = map.getVariable(left.token.data);
+            case "builtin": //gl_FragColor
+                variable = map.getVariable(getActualVariableName(left.token.data));
                 break;
         }
         if (variable) {
@@ -288,6 +403,15 @@ export function convert(ast, map = new VariablesMap()) {
         }
     }
 
+    function returnexpr(node) {
+        if (!insideFunction()) return console.warn("Return outside function? huh")
+        let currentCall = functionCallStack[functionCallStack.length-1];
+        let varId = process(node.children[0]); //expression
+        out.push({op: "=", out: [varPtr(currentCall.returnVar)], args: [varId], line: node.token.line});
+        out.push({op: "_ignore", out: [], args: [], range: TypeRange.create("float", currentCall.callId), line: node.token.line})
+
+    }
+
     function process(node) {
         let variable;
         switch (node.type) {
@@ -300,7 +424,7 @@ export function convert(ast, map = new VariablesMap()) {
                 }
                 return varPtr(variable);
             case "ident":
-                variable = map.getVariable(node.token.data);
+                variable = map.getVariable(getActualVariableName(node.token.data));
                 if (variable) return varPtr(variable);
                 break;
             case "decl":
@@ -322,6 +446,9 @@ export function convert(ast, map = new VariablesMap()) {
                 break;
             case "if":
                 return ifcondition(node); 
+            case "return":
+                return returnexpr(node);
+
         }
         console.warn("unknown node type: " + node.type);
         return processChildren(node);
@@ -392,6 +519,10 @@ function devecCompare(op, map) {
     return ret;
 }
 
+function devecNothing(op, map) {
+    return op;
+}
+
 function devecMath(op, map) {
     //case 1 - vecX vs vecX
     //case 2 - vecX vs float
@@ -402,6 +533,9 @@ function devecMath(op, map) {
     if (op.args.length > 1) {
         arg2 = getPtrComponents(op.args[1], map);
     }
+    if (op.args.length > 2) { //clamp case
+        arg2 = arg2.concat(getPtrComponents(op.args[2], map));
+    }
     while (outArgs.length < 4) outArgs.push(noVarPtr());
     while (arg1.length < 4) arg1.push(noVarPtr());
     if (arg2.length > 0) {
@@ -411,6 +545,7 @@ function devecMath(op, map) {
     }
     return {op: op.op, out: outArgs, args: arg1, range: op.range, line: op.line};
 }
+
 
 function devecCommon(op, map) {
     let outArgs = op.out.length ? getPtrComponents(op.out[0], map) : [];

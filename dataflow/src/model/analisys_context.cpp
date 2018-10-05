@@ -64,7 +64,7 @@ BranchId AnalisysContext::createBranch(BranchId parentId, CmdId cmdId, VarId var
     branches[id] = branch;
     for (unsigned int i = 0; i < maxCreatedId; i++) {
         Variable* variable = variables[i];
-        if (variable != NULL && variable->isActive()) {
+        if (variable != NULL && variable->isActive()) { //todo: issue 1
             variable->initBranch(id, parentId);
             if (i == varId) {
                 variable->changeRange(id, cmdId, range, TR_Branch, NULL);
@@ -81,19 +81,27 @@ BranchId AnalisysContext::createBranch(BranchId parentId, CmdId cmdId, VarId var
 void AnalisysContext::populateChanges(CmdId cmdId, BranchId branchId, BranchId parentBranchId, VarId varId, const TypeRange& changedRange)
 {
     const Variable* lastUpdatedVar = variables[varId];
+    //todo: issue 1: so here we assume that variable has record for parentBranchId and it points to last change
+    //even it occured in prev branch. BUT variable could be already inactive (after _forget), so in createBranch
+    //it is ignored and record for new branch is not created. So there are options: 
+    // 1. update inactive as well. bad - memory
+    // 2. update inactive if they are dependent
+    // 3. ... keep as is, because if var is inactive - it is not used later. We may skip updating it's range  
     const TypeRangeChange* change = lastUpdatedVar->getLastChangeForBranch(parentBranchId);
     if (change != NULL && change->restore != NULL)
     {
         RestoreRange* restorer = change->restore;
         Variable* dep = variables[restorer->getDependent()];
         const TypeRangeChange* depChange = dep->getLastChangeForBranch(parentBranchId);
-        if (depChange->cmdId < restorer->getChangedAt()) {
+        if (depChange != NULL && depChange->cmdId < restorer->getChangedAt()) {
             const TypeRange& newRange = restorer->restore(*(dep->getRange(parentBranchId)), changedRange);
             dep->changeRange(branchId, cmdId, newRange, TR_BackPropagation, NULL);
+            //todo: maybe here I need to use not original branchId/parentBranchId?
             populateChanges(cmdId, branchId, parentBranchId, restorer->getDependent(), newRange);
+        
         }
     }
-
+    
 }
 
 void AnalisysContext::addWarning(Command* command, BranchId branchId, VarId variable, unsigned int argNr, TypeRange expected, TypeRange actual)
