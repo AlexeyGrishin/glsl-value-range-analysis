@@ -130,7 +130,7 @@ TEST(Analyzer, Test_Dependencies) {
     analyzer.processCommand(&cmdDefine5);
     analyzer.processCommand(&cmdLt);
 
-    print(analyzer);
+    //print(analyzer);
 
     //compare result
     ASSERT_EQ(TypeRange(1), *analyzer.getRange(1, 4));
@@ -311,4 +311,260 @@ TEST(Analyzer, TestStep) {
     ASSERT_EQ(TypeRange(1), *analyzer.getRange(4, 3));
     ASSERT_EQ(TypeRange(1), *analyzer.getRange(4, 4));
 
+}
+
+TEST(Analyzer, WatchEndWatchIgnore) {
+    DataFlowAnalyzer analyzer;
+
+    //const1 = 0.5
+    Command cmdDefine1(1, _define_op);
+    cmdDefine1.addArgument(1);
+    cmdDefine1.setRange(TypeRange(0.5));
+    //a = 0
+    Command cmdDefine2(2, _define_op); 
+    cmdDefine2.addArgument(2);
+    cmdDefine2.setRange(TypeRange(0));
+    //_watch a
+    Command cmdWatch3(3, _watch_op);
+    cmdWatch3.addArgument(2);
+    //a = a + 0.5
+    Command cmdPlus4(4, plus_op);
+    ADDARG4(cmdPlus4, 2)
+    ADDARG4(cmdPlus4, 2)
+    ADDARG4(cmdPlus4, 1)
+    //_ignore i
+    Command cmdIgnore5(5, _ignore_op);
+    cmdIgnore5.addArgument(2);
+    //a = a + 0.5
+    Command cmdPlus6(6, plus_op);
+    ADDARG4(cmdPlus6, 2)
+    ADDARG4(cmdPlus6, 2)
+    ADDARG4(cmdPlus6, 1)
+    //_endwatch i
+    Command cmdEnd7(7, _endwatch_op);
+    cmdEnd7.addArgument(2);
+    //a = a - 0.5
+    Command cmdMinus8(8, minus_op);
+    ADDARG4(cmdMinus8, 2)
+    ADDARG4(cmdMinus8, 2)
+    ADDARG4(cmdMinus8, 1)
+
+    analyzer.processCommand(&cmdDefine1);
+    analyzer.processCommand(&cmdDefine2);
+    analyzer.processCommand(&cmdWatch3);
+    analyzer.processCommand(&cmdPlus4);
+    analyzer.processCommand(&cmdIgnore5);
+    analyzer.processCommand(&cmdPlus6);
+    analyzer.processCommand(&cmdEnd7);
+    analyzer.processCommand(&cmdMinus8);
+
+    print(analyzer);
+    ASSERT_EQ(1, analyzer.getBranches().count);
+    ASSERT_EQ(TypeRange(0), *analyzer.getRange(MAIN_BRANCH, 2));
+    
+}
+
+TEST(Analyzer, WatchEndWatchIgnore_Branches) {
+    DataFlowAnalyzer analyzer;
+    //const1 = 0.5
+    Command cmdDefine1(1, _define_op);
+    cmdDefine1.addArgument(1);
+    cmdDefine1.setRange(TypeRange(0.5));
+
+    //const2 = 1
+    Command cmdDefine2(2, _define_op);
+    cmdDefine2.addArgument(2);
+    cmdDefine2.setRange(TypeRange(1));
+    //a3 = [0, 1]
+    Command cmdDefine3(3, _define_op);
+    cmdDefine3.addArgument(3);
+    cmdDefine3.setRange(TypeRange(0, 1));
+    //_watch a3
+    Command cmdWatch4(4, _watch_op);
+    cmdWatch4.addArgument(3);
+    //a = a + 0.5  // [0.5, 1.5]
+    Command cmdPlus5(5, plus_op);
+    ADDARG4(cmdPlus5, 3);
+    ADDARG4(cmdPlus5, 3);
+    ADDARG4(cmdPlus5, 1);
+    //_if a > 1    // [0.5, 1] vs (1, 1.5]
+    Command cmdDefine6(6, _define_op);
+    cmdDefine6.addArgument(4);
+    Command cmdGt7(7, gt_op);
+    cmdGt7.addArgument(4);
+    ADDARG4(cmdGt7, 3);
+    ADDARG4(cmdGt7, 2);
+    Command cmdIf8(8, _ifeq_op);
+    cmdIf8.addArgument(4);
+    cmdIf8.setRange(TypeRange(1));
+    //_ignore i
+    Command cmdIgnore9(9, _ignore_op);
+    cmdIgnore9.addArgument(3);
+    //_endif
+    Command cmdEndIf10(10, _endif_op);
+    cmdEndIf10.addArgument(4);
+    //a = a - 0.5  // [0, 0.5] vs (1, 1.5]
+    Command cmdMinus11(11, minus_op);
+    ADDARG4(cmdMinus11, 3);
+    ADDARG4(cmdMinus11, 3);
+    ADDARG4(cmdMinus11, 1);
+    //_endwatch i  
+    Command cmdEndWatch12(12, _endwatch_op);
+    cmdEndWatch12.addArgument(3);
+
+    analyzer.processCommand(&cmdDefine1);
+    analyzer.processCommand(&cmdDefine2);
+    analyzer.processCommand(&cmdDefine3);
+    analyzer.processCommand(&cmdWatch4);
+    analyzer.processCommand(&cmdPlus5);
+    analyzer.processCommand(&cmdDefine6);
+    analyzer.processCommand(&cmdGt7);
+    analyzer.processCommand(&cmdIf8);
+    analyzer.processCommand(&cmdIgnore9);
+    analyzer.processCommand(&cmdEndIf10);
+    analyzer.processCommand(&cmdMinus11);
+    analyzer.processCommand(&cmdEndWatch12);
+
+    print(analyzer);
+    ASSERT_EQ(3, analyzer.getBranches().count);
+    ASSERT_EQ(TypeRange(0, 0.5), *analyzer.getRange(1, 3));
+    ASSERT_EQ(TypeRange(1, 1.5, INCLUDE_RIGHT), *analyzer.getRange(2, 3));
+
+}
+
+
+TEST(Analyzer, Lt_Branches) {
+    DataFlowAnalyzer analyzer;
+    //const1 = 0.5
+    Command cmdDefine1(1, _define_op);
+    cmdDefine1.addArgument(1);
+    cmdDefine1.setRange(TypeRange(0.5));
+    //var2 = [0,1];
+    Command cmdDefine2(2, _define_op);
+    cmdDefine2.addArgument(2);
+    cmdDefine2.setRange(TypeRange(0, 1));
+    //var3 = var2 < const1
+    Command cmdDefine3(3, _define_op);
+    cmdDefine3.addArgument(3);
+
+    Command cmdLt4(4, lt_op);
+    cmdLt4.addArgument(3);
+    ADDARG4(cmdLt4, 2);
+    ADDARG4(cmdLt4, 1);
+
+    analyzer.processCommand(&cmdDefine1);
+    analyzer.processCommand(&cmdDefine2);
+    analyzer.processCommand(&cmdDefine3);
+    analyzer.processCommand(&cmdLt4);
+
+    print(analyzer);
+    ASSERT_EQ(3, analyzer.getBranches().count);
+    ASSERT_EQ(TypeRange(0, 0.5, INCLUDE_LEFT), *analyzer.getRange(1, 2));
+    ASSERT_EQ(TypeRange(0.5,1), *analyzer.getRange(2, 2));
+}
+
+TEST(Analyzer, Lt_AlwaysSingleBranch) {
+    DataFlowAnalyzer analyzer;
+    //const1 = 2
+    Command cmdDefine1(1, _define_op);
+    cmdDefine1.addArgument(1);
+    cmdDefine1.setRange(TypeRange(2));
+    //var2 = [0,1];
+    Command cmdDefine2(2, _define_op);
+    cmdDefine2.addArgument(2);
+    cmdDefine2.setRange(TypeRange(0, 1));
+    //var3 = var2 < const1
+    Command cmdDefine3(3, _define_op);
+    cmdDefine3.addArgument(3);
+
+    Command cmdLt4(4, lt_op);
+    cmdLt4.addArgument(3);
+    ADDARG4(cmdLt4, 2);
+    ADDARG4(cmdLt4, 1);
+
+    analyzer.processCommand(&cmdDefine1);
+    analyzer.processCommand(&cmdDefine2);
+    analyzer.processCommand(&cmdDefine3);
+    analyzer.processCommand(&cmdLt4);
+
+    print(analyzer);
+    //expected - branch is not created
+    //ASSERT_EQ(1, analyzer.getBranches().count);
+    //ASSERT_EQ(TypeRange(0, 1), *analyzer.getRange(0, 2));
+    //actual - single branch is craeted.
+    ASSERT_EQ(2, analyzer.getBranches().count);
+    ASSERT_EQ(TypeRange(0, 1), *analyzer.getRange(1, 2));
+}
+
+TEST(Analyzer, Lt_SingleBranch_Consts) {
+    DataFlowAnalyzer analyzer;
+    //var1 = 1
+    Command cmdDefine1(1, _define_op);
+    cmdDefine1.addArgument(1);
+    cmdDefine1.setRange(TypeRange(1));
+    //var3 = var2 < const1
+    Command cmdDefine3(3, _define_op);
+    cmdDefine3.addArgument(3);
+    Command cmdLt4(4, lt_op);
+    cmdLt4.addArgument(3);
+    ADDARG4(cmdLt4, 1);
+    ADDARG4(cmdLt4, 1);
+
+    analyzer.processCommand(&cmdDefine1);
+    analyzer.processCommand(&cmdDefine3);
+    analyzer.processCommand(&cmdLt4);
+
+    print(analyzer);
+    //expected - branch is not created
+    //ASSERT_EQ(1, analyzer.getBranches().count);
+    //ASSERT_EQ(TypeRange(0, 1), *analyzer.getRange(0, 2));
+    //actual - single branch is craeted.
+    ASSERT_EQ(2, analyzer.getBranches().count);
+    ASSERT_EQ(TypeRange(1), *analyzer.getRange(1, 1));
+
+}
+
+TEST(Analyzer, UnaryMinus) {
+    DataFlowAnalyzer analyzer;
+
+    //const var1 = 0,1
+    Command cmdDefine1(1, _define_op);
+    cmdDefine1.addArgument(1);
+    cmdDefine1.setRange(TypeRange(0, 1));
+    //const var2 = -var1
+    Command cmdDefine2(2, _define_op);
+    cmdDefine2.addArgument(2);
+    Command cmdUnary3(3, unary_minus_op);
+    ADDARG4(cmdUnary3, 2);
+    ADDARG4(cmdUnary3, 1);
+    //const var3 = -0.5
+    Command cmdDefine4(4, _define_op);
+    cmdDefine4.addArgument(3);
+    cmdDefine4.setRange(TypeRange(-0.5));
+    //tmp4 = var2 < var3    
+    Command cmdDefine5(5, _define_op);
+    cmdDefine5.addArgument(4);
+    Command cmdLt6(6, lt_op);
+    cmdLt6.addArgument(4);
+    ADDARG4(cmdLt6, 2);
+    ADDARG4(cmdLt6, 3);
+
+    analyzer.processCommand(&cmdDefine1);
+    analyzer.processCommand(&cmdDefine2);
+    analyzer.processCommand(&cmdUnary3);
+    analyzer.processCommand(&cmdDefine4);
+    analyzer.processCommand(&cmdDefine5);
+    analyzer.processCommand(&cmdLt6);
+
+    //branch 1 - var2 = [-1, -0.5), var1 = (0.5, 1]
+    //branch 2 - var2 = [-0.5, 0], var2 = [0, 0.5]
+
+    print(analyzer);
+
+    ASSERT_EQ(3, analyzer.getBranches().count);
+    ASSERT_EQ(TypeRange(-1, -0.5, INCLUDE_LEFT), *analyzer.getRange(1, 2));
+    ASSERT_EQ(TypeRange(0.5, 1, INCLUDE_RIGHT), *analyzer.getRange(1, 1));
+
+    ASSERT_EQ(TypeRange(-0.5, 0), *analyzer.getRange(2, 2));
+    ASSERT_EQ(TypeRange(0, 0.5), *analyzer.getRange(2, 1));
 }

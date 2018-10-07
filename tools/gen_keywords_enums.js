@@ -21,6 +21,7 @@ const OpCodes = `
     _watch
     _ignore
     _endwatch
+    _copy
 `.split(/\s+/).map(s => s.trim()).filter(s => s.length);
 
 fs.writeFileSync(path.join(".", "glsl", "src", "opcodes.js"), `

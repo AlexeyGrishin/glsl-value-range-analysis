@@ -52,14 +52,14 @@ TypeRange RangeOps::mix(const TypeRange& arg1, const TypeRange& arg2, const Type
 {
     double left1 = arg1.left, left2 = arg2.left;
     double right1 = arg1.right, right2 = arg2.right;
-    
+
     if (mix.left >= 0 && mix.left <= 1) {
-        left1 = arg1.left * (1 - mix.left) + arg1.right * mix.left;
-        left2 = arg2.left * (1 - mix.left) + arg2.right * mix.left;
+        left1 = arg1.left * (1 - mix.left) + arg2.left * mix.left;
+        left2 = arg1.right * (1 - mix.left) + arg2.right * mix.left;
     }
     if (mix.right >= 0 && mix.right <= 1) {
-        right1 = arg1.left * (1 - mix.right) + arg1.right * mix.right;
-        right2 = arg2.left * (1 - mix.right) + arg2.right * mix.right;
+        right1 = arg1.left * (1 - mix.right) + arg2.left * mix.right;
+        right2 = arg1.right * (1 - mix.right) + arg2.right * mix.right;
     }
     double realLeft = MIN(left1, left2);
     double realRight = MAX(right1, right2);
@@ -131,16 +131,16 @@ TypeRange RangeOps::getRightIncluding(const TypeRange& input, double edge)
 
 TypeRange RangeOps::getLeftExcluding(const TypeRange& input, double edge)
 {
-    if (edge >= input.right) return input;
-    if (edge < input.left) return TypeRange(1,-1);
+    if (edge <= input.left) return TypeRange(1,-1);
+    if (edge > input.right) return input;
 
     return TypeRange(input.left, edge, (RangeFlag)(input.flag & INCLUDE_LEFT));
 }
 
 TypeRange RangeOps::getRightExcluding(const TypeRange& input, double edge)
 {
-    if (edge <= input.left) return input;
-    if (edge > input.right) return TypeRange(1,-1);
+    if (edge >= input.right) return TypeRange(1,-1);
+    if (edge < input.left) return input;
 
     return TypeRange(edge, input.right, (RangeFlag)(input.flag & INCLUDE_RIGHT));
 

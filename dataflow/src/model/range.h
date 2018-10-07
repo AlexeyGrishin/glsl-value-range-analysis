@@ -28,7 +28,7 @@ struct TypeRange {
     TypeRange(double left, double right, RangeFlag flag) : flag(flag), left(left), right(right) {}
     TypeRange(double left, double right) : flag(INCLUDE_BOTH), left(left), right(right) {}
 
-    bool isSingle() const { return left == right;  }
+    bool isSingle() const;
     bool includes(double n) const;
     bool includes(const TypeRange& anotherRange) const;
     bool isValid() const;

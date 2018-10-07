@@ -42,6 +42,13 @@ RangeFlag merge(RangeFlag flag1, RangeFlag flag2)
     return (RangeFlag)out;
 }
 
+RangeFlag reverse(RangeFlag flag)
+{
+    if (flag == INCLUDE_LEFT) return INCLUDE_RIGHT;
+    if (flag == INCLUDE_RIGHT) return INCLUDE_LEFT;
+    return flag;
+}
+
 TypeRange TypeRange::operator+(const TypeRange& another) const
 {
     return TypeRange(left + another.left, right + another.right, merge(flag, another.flag));
@@ -54,7 +61,7 @@ TypeRange TypeRange::operator-(const TypeRange& another) const
 
 TypeRange TypeRange::operator-() const
 {
-    return TypeRange(-left, -right, flag);
+    return TypeRange(-right, -left, reverse(flag));
 }
 
 TypeRange TypeRange::operator*(const TypeRange& another) const
@@ -67,19 +74,29 @@ TypeRange TypeRange::operator*(const TypeRange& another) const
     return TypeRange(MIN(MIN(ll, lr), MIN(rl,rr)), MAX(MAX(ll, lr), MAX(rl, rr)), merge(flag, another.flag));
 }
 
+bool fequal(double left, double right) {
+    if (!isfinite(left) || !isfinite(right)) return left == right;
+    return fabs(left - right) < Eps;
+}
+
 bool TypeRange::operator==(const TypeRange& another) const
 {
-    return left == another.left && right == another.right && flag == another.flag;
+    return fequal(left, another.left) && fequal(right, another.right) && flag == another.flag;
 }
 
 bool TypeRange::operator!=(const TypeRange& another) const
 {
-    return left != another.left || right != another.right || flag != another.flag;
+    return !fequal(left, another.left) || !fequal(right, another.right) || flag != another.flag;
 }
 
 TypeRange::operator bool() const
 {
-    return isSingle() && left == 0 ? false : true;
+    return (isSingle() && fequal(left, 0)) ? false : true;
+}
+
+bool TypeRange::isSingle() const 
+{
+    return fequal(left, right);
 }
 
 TypeRange& TypeRange::operator=(const TypeRange& another)

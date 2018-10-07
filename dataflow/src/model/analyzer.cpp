@@ -25,8 +25,10 @@ ProcessResult DataFlowAnalyzer::processCommand(Command* command)
                 context.forgetVariable(command->arguments[0]);
                 break;
             case _ifeq_op:
-                break;
             case _endif_op:
+            case _watch_op:
+            case _endwatch_op:
+            case _ignore_op:
                 break;
             default:
                 if (ops.isKnown(command->opCode)) {
@@ -53,6 +55,15 @@ ProcessResult DataFlowAnalyzer::processCommand(Command* command)
                 break;
             case _endif_op:
                 local.onEndIf();
+                break;
+            case _watch_op:
+                local.onWatch(command->arguments[0]);
+                break;
+            case _endwatch_op:
+                local.onEndWatch(command->arguments[0]);
+                break;
+            case _ignore_op:
+                local.onIgnoreWatch(command->arguments[0]);
                 break;
             default:
                 if (!branch->skip && ops.isKnown(command->opCode)) {

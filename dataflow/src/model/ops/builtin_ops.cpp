@@ -28,6 +28,13 @@ public:
     }
 };
 
+class RestoreUnaryMinus: public RestoreRange {
+public:
+    TypeRange restore(const TypeRange& myRange, const TypeRange& shrinkedRange) {
+        return -shrinkedRange;
+    }    
+};
+
 void plus(LocalContext& ctx, unsigned int out, unsigned int arg1, unsigned int arg2) {
     if (!ctx.isDefined(out)) return;
     const TypeRange& r1 = ctx.get(arg1);
@@ -137,7 +144,7 @@ BRANCH_OPERATION(LtOp, lt_op, {
 }, {
     TypeRange left = ctx.get(1);
     TypeRange right = ctx.get(5);
-    //todo: what if expression is always true for current branch? don't need to branch in this case
+    //todo: what if expression is always true for current branch? don't need to branch in this case. need to check and tests
     if (right.isSingle()) {
         ctx.createBranch(1, RangeOps::getLeftExcluding(left, right.left));
         ctx.createBranch(1, RangeOps::getRightIncluding(left, right.left));
@@ -226,6 +233,7 @@ void validatePower(LocalContext& ctx, unsigned int out, unsigned int arg1, unsig
     if (!ctx.isDefined(out)) return;
     const TypeRange& base = ctx.get(arg1);
     const TypeRange& exp = ctx.get(arg2);
+    //todo: check spec about power(a,b) when b < 0
     if (base.left <= 0 || base.right < 0 || base.includes(0)) {
         ctx.addWarning(arg1, TypeRange(0, INFINITY, EXCLUDE_BOTH));
     }
@@ -286,10 +294,10 @@ OPERATION(NormalizeOp, normalize_op, {
 });
 
 OPERATION(UnaryMinusOp, unary_minus_op, {
-    ctx.set(0, -ctx.get(4));
-    if (ctx.isDefined(1)) ctx.set(1, -ctx.get(5));
-    if (ctx.isDefined(2)) ctx.set(2, -ctx.get(6)); 
-    if (ctx.isDefined(3)) ctx.set(3, -ctx.get(7));
+    ctx.set(0, -ctx.get(4), new RestoreUnaryMinus(), 4);
+    if (ctx.isDefined(1)) ctx.set(1, -ctx.get(5), new RestoreUnaryMinus(), 5);
+    if (ctx.isDefined(2)) ctx.set(2, -ctx.get(6), new RestoreUnaryMinus(), 6); 
+    if (ctx.isDefined(3)) ctx.set(3, -ctx.get(7), new RestoreUnaryMinus(), 7);
 });
 
 OPERATION(DotOp, dot_op, {
@@ -309,6 +317,14 @@ OPERATION(DotOp, dot_op, {
 //todo: tests
 OPERATION(OrOp, or_op, {
     ctx.set(0, ctx.get(1) || ctx.get(5));
+});
+
+OPERATION(AndOp, and_op, {
+    ctx.set(0, ctx.get(1) && ctx.get(5));
+});
+
+OPERATION(CopyOp, _copy_op, {
+    ctx.set(0, ctx.get(1));
 });
 
 REGISTER_START(registerBuiltinOps)
@@ -336,4 +352,6 @@ REGISTER(NormalizeOp)
 REGISTER(UnaryMinusOp)
 REGISTER(DotOp)
 REGISTER(OrOp)
+REGISTER(AndOp)
+REGISTER(CopyOp)
 REGISTER_END

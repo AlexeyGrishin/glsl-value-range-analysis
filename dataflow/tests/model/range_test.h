@@ -221,6 +221,26 @@ TEST(RangeOps, GetRight_Outside) {
     ASSERT_FALSE(RangeOps::getRightExcluding(r1, 15).isValid());
 }
 
+TEST(RangeOps, GetLeft_Edge) {
+    TypeRange r1(0, 10);
+    ASSERT_EQ(TypeRange(0), RangeOps::getLeftIncluding(r1, 0));
+    ASSERT_FALSE(RangeOps::getLeftExcluding(r1, 0).isValid());
+}
+
+TEST(RangeOps, GetRight_Edge) {
+    TypeRange r1(-10, 0);
+    ASSERT_EQ(TypeRange(0), RangeOps::getRightIncluding(r1, 0));
+    ASSERT_FALSE(RangeOps::getRightExcluding(r1, 0).isValid());
+}
+
+TEST(RangeOps, GetLeftRight_Consts) {
+    TypeRange r1(0.7);
+    ASSERT_EQ(TypeRange(0.7), RangeOps::getRightIncluding(r1, 0.7));
+    ASSERT_EQ(TypeRange(0.7), RangeOps::getLeftIncluding(r1, 0.7));
+    ASSERT_FALSE(RangeOps::getLeftExcluding(r1, 0.7).isValid());
+    ASSERT_FALSE(RangeOps::getRightExcluding(r1, 0.7).isValid());
+}
+
 TEST(RangeOps, Min) {
     TypeRange r1(0, 20);
     TypeRange r2(5, 15);
@@ -263,10 +283,30 @@ TEST(RangeOps, Fract) {
 }
 
 TEST(RangeOps, Mix_Const) {
+    //mix([0,10], [20,40], 0.5)
+    //0-20   10 - min
+    //2-20   11
+    //0-40   20
+    //10-20  15
+    //10-40  25 - max
     TypeRange r1(0, 10);
     TypeRange r2(20, 40);
     TypeRange mix(0.5);
-    ASSERT_EQ(TypeRange(5, 30), RangeOps::mix(r1, r2, mix));
+    ASSERT_EQ(TypeRange(10, 25), RangeOps::mix(r1, r2, mix));
+}
+
+TEST(RangeOps, Mix_Consts) {
+    TypeRange r1(10);
+    TypeRange r2(20);
+    TypeRange mix(0.2);
+    ASSERT_EQ(TypeRange(12), RangeOps::mix(r1, r2, mix));
+}
+
+TEST(RangeOps, Mix_Consts_Reverse) {
+    TypeRange r1(20);
+    TypeRange r2(10);
+    TypeRange mix(0.2);
+    ASSERT_EQ(TypeRange(18), RangeOps::mix(r1, r2, mix));
 }
 
 TEST(RangeOps, Mix_Full) {
@@ -277,14 +317,45 @@ TEST(RangeOps, Mix_Full) {
 }
 
 TEST(RangeOps, Mix_Full_Includes) {
-    TypeRange r1(0, 40);
-    TypeRange r2(10, 20);
+    TypeRange r1(0, 10);
+    TypeRange r2(10, 40);
     TypeRange mix(0, 1);
     ASSERT_EQ(TypeRange(0, 40), RangeOps::mix(r1, r2, mix));
 }
 
 TEST(RangeOps, Mix_Range) {
-    TypeRange r1(0, 40);
-    TypeRange r2(10, 20);
-    ASSERT_EQ(TypeRange(0, 20), RangeOps::mix(r1, r2, TypeRange(0, 0.5)));
+    TypeRange r1(0, 10);
+    TypeRange r2(10, 40);
+    ASSERT_EQ(TypeRange(0, 25), RangeOps::mix(r1, r2, TypeRange(0, 0.5)));
 }
+
+TEST(RangeOps, Power_RightIsConst) {
+    TypeRange r1(2, 3);
+    TypeRange pwr(3);
+
+    ASSERT_EQ(TypeRange(8, 27), RangeOps::power(r1, pwr));
+}
+
+TEST(RangeOps, Power_RightIsRange) {
+    TypeRange r1(2, 3);
+    TypeRange pwr(2,3);
+
+    ASSERT_EQ(TypeRange(4, 27), RangeOps::power(r1, pwr));
+}
+
+TEST(RangeOps, Power_Around1) {
+    TypeRange r1(0.1, 10);
+    TypeRange pwr(2, 3);
+    TypeRange actual = RangeOps::power(r1, pwr);
+    TypeRange expected = TypeRange(0.001, 1000);
+    ASSERT_EQ(expected, actual);
+}
+
+
+TEST(Range, Boolean) {
+    ASSERT_TRUE((bool)(TypeRange(1)));
+    ASSERT_FALSE((bool)(TypeRange(0)));
+    ASSERT_TRUE((bool)(TypeRange(0,1)));
+}
+
+//todo: test for minus(?)

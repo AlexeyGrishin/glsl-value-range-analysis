@@ -17,15 +17,28 @@ const OpsMap = {
     "/": op(OpCode.div, firstArg, devecMath),
     "sin": op(OpCode.sin, firstArg, devecMath),
     "cos": op(OpCode.cos, firstArg, devecMath),
+    "atan": op(OpCode.atan, firstArg, devecMath),
+    "min": op(OpCode.min, firstArg, devecMath),
+    "max": op(OpCode.max, firstArg, devecMath),
+    "fract": op(OpCode.fract, firstArg, devecMath),
+    "floor": op(OpCode.floor, firstArg, devecMath),
+    "power": op(OpCode.power, firstArg, devecMath),
+    "mix": op(OpCode.mix, firstArg, devecMath),
+    "normalize": op(OpCode.normalize, firstArg, devecMath),
+    //todo: dot
+    //todo: cross
+    "unary-": op(OpCode.unary_minus, firstArg, devecMath),
     "<": op(OpCode.lt, "boolean", devecCompare),
     ">": op(OpCode.gt, "boolean", devecCompare),
     "<=": op(OpCode.lte, "boolean", devecCompare),
     ">=": op(OpCode.gte, "boolean", devecCompare),
     "==": op(OpCode.eq, "boolean", devecCompare),
     "||": op(OpCode.or, "boolean", devecCompare),
+    "&&": op(OpCode.and, "boolean", devecCompare),
     "texture2D": op(OpCode.texture2D, "vec4", devecCommon),
     "length": op(OpCode.length, "float", devecCommon),
     "step": op(OpCode.step, secondArg, devecMath),
+    "smoothstep": op(OpCode.smoothstep, secondArg, devecMath),
     "clamp": op(OpCode.clamp, firstArg, devecMath),
 
     "vec4": op(undefined, "vec4", devecVecCtor),
@@ -42,7 +55,11 @@ const OpsMap = {
 
     "_watch": op(OpCode._watch, undefined, devecNothing),
     "_endwatch": op(OpCode._endwatch, undefined, devecNothing),
-    "_ignore": op(OpCode._ignore, undefined, devecNothing)
+    "_ignore": op(OpCode._ignore, undefined, devecNothing),
+
+
+    "float": op(OpCode._copy, "float", devecNothing),
+    "int": op(OpCode._copy, "float", devecNothing)
 };
 
 //todo: type enums?
@@ -50,6 +67,10 @@ function predictOutBuiltinType(operator, inTypes) {
     let knownOp = OpsMap[operator];
     if (knownOp) return knownOp.getOutType(inTypes);
     return undefined;
+}
+
+function isCopyFn(operator) {
+    return OpsMap[operator] && OpsMap[operator].opCode === OpCode._copy;
 }
 
 
@@ -70,11 +91,17 @@ export class VariablesMap {
     }
 
     getConst(value, type) {
+        value = value + ""; //expected to be string
         return this.constToVar.get(value);
+    }
+
+    copyRange(toId, fromId) {
+        this.getById(toId).range = this.getById(fromId).range;
     }
 
     addConst(value, type) {
         let id = this.nextVarId++;
+        value = value + "";
         let variable = {name: `const(${value})`, id, type, range: value, value};
         this.nameToVar.set(name, variable);
         this.vars.push(variable);
@@ -172,6 +199,12 @@ export function convert(ast, map = new VariablesMap()) {
     let functionCallsCounter = 9600;
     let functionCallStack = [];
 
+    let loopCallStack = [];
+
+    function insideLoop() {
+        return loopCallStack.length > 0;
+    }
+
     function insideFunction() {
         return functionCallStack.length > 0;
     }
@@ -224,7 +257,7 @@ export function convert(ast, map = new VariablesMap()) {
             returnVar: outVar
         });
         let customFunction = customFunctions.get(fid);
-        out.push({op: "_watch", out: [], args: [], range: TypeRange.create("float", callId), line: customFunction.node.token.line})
+        out.push({op: "_watch", out: [varPtr(outVar)], args: [], line: customFunction.node.token.line})
 
         let i = 0;
         for (let fnArgName of customFunction.inArgNames) {
@@ -237,7 +270,7 @@ export function convert(ast, map = new VariablesMap()) {
 
         process(customFunction.body);
         
-        out.push({op: "_endwatch", out: [], args: [], range: TypeRange.create("float", callId), line: customFunction.node.token.line})
+        out.push({op: "_endwatch", out: [varPtr(outVar)], args: [], line: customFunction.node.token.line})
 
         functionCallStack.pop();
 
@@ -248,7 +281,15 @@ export function convert(ast, map = new VariablesMap()) {
         let functionName = node.children[0].token.data;
         let args = node.children.slice(1);
         let argVars = args.map(process);
-        let variable = map.addTempVariable(predictOutType(functionName, argVars.map(vptr => map.getById(vptr).type)));
+        let outType = predictOutType(functionName, argVars.map(vptr => map.getById(vptr).type));
+        if (outType === undefined) {
+            console.warn("undefined type for call result", functionName, " assume float");
+            outType = "float";
+        }
+        if (isCopyFn(functionName)) {
+            return varPtr(argVars[0]);
+        }
+        let variable = map.addTempVariable(outType);
         if (isCustomFunction(functionName)) {
             callCustom(functionName, variable, argVars);
         } else {
@@ -302,6 +343,7 @@ export function convert(ast, map = new VariablesMap()) {
             if (map.isConst(inId)) {
                 //no previous op
                 out.push({op: "=", args: [inId], out: [varPtr(variable)]});
+                map.copyRange(variable.id, inId);
             } else {
                 let prevOp = out.pop();
                 if (prevOp.out[0].id !== inId.id) throw new Error("wrong");
@@ -363,10 +405,28 @@ export function convert(ast, map = new VariablesMap()) {
     }
 
     function assign(node) {
-        let left = node.children[0];
-        let right = node.children[1];
-        let argId = process(right);
 
+        switch (node.token.data) {
+            case "=":
+                return assignDirect(node);
+            case "+=":
+            case "-=":
+            case "*=":
+            case "/=":
+                let modifyOp = node.token.data[0]; //+,-, or something else
+                let fakeNode = {
+                    ...node,
+                    token: {
+                        ...node.token,
+                        data: modifyOp
+                    }
+                }
+                let tmpVarPtr = operator(fakeNode); 
+                return assignDirectToVariable(node.children[0], tmpVarPtr);
+        }
+    }
+
+    function assignDirectToVariable(left, argId) {
         let variable, part;
         switch (left.type) {
             case "operator":
@@ -384,10 +444,21 @@ export function convert(ast, map = new VariablesMap()) {
         }
         if (variable) {
             //todo: same optimization as in declaration: if left part is "whole", then do not introduce temp var
-            out.push({op: "=", out: [varPtr(variable.id, part)], args: [argId], line: node.token.line});
-        } else {
+            out.push({op: "=", out: [varPtr(variable.id, part)], args: [argId], line: left.token.line});
+            return variable;
+        } 
+    }
+
+    function assignDirect(node) {
+        let left = node.children[0];
+        let right = node.children[1];
+        let argId = process(right);
+
+        let variable = assignDirectToVariable(left, argId);
+        if (!variable) {
             console.warn("Don't know how to assign", left, " = ", right, "(" + argId + ")");
         }
+        
     }
 
     function ifcondition(node) {
@@ -408,8 +479,102 @@ export function convert(ast, map = new VariablesMap()) {
         let currentCall = functionCallStack[functionCallStack.length-1];
         let varId = process(node.children[0]); //expression
         out.push({op: "=", out: [varPtr(currentCall.returnVar)], args: [varId], line: node.token.line});
-        out.push({op: "_ignore", out: [], args: [], range: TypeRange.create("float", currentCall.callId), line: node.token.line})
+        out.push({op: "_ignore", out: [varPtr(currentCall.returnVar)], args: [], line: node.token.line})
+    }
 
+    function breakexpr(node) {
+        if (!insideLoop()) return console.warn("Break outside loop? heh")
+        let currentLoop = loopCallStack[loopCallStack.length-1];
+        out.push({op: "_ignore", out: [varPtr(currentLoop.iteratorVar)], args: [], line: node.token.line})
+    }
+
+    function getConst(node) {
+        switch (node.type) {
+            case "literal": return parseFloat(node.token.data);
+            case "unary":
+                if (node.token.data === "-" && node.children[0]) {
+                    let out = getConst(node.children[0]);
+                    if (out !== undefined) return -out;
+                }
+        }
+        return undefined;
+    }
+
+    function simpleloop(node) {
+        let initexpr = node.children[0];
+        let condexpr = node.children[1];
+        let changeexpr = node.children[2];
+        let body = node.children[3];
+        
+        //console.log(initexpr, condexpr, changeexpr);
+
+        if (initexpr.type !== "decl") return false;
+        let iteratorVar = map.getById(declvar(initexpr));
+        let initRange = TypeRange.create(iteratorVar.type, iteratorVar.range);
+        if (!initRange.isSingle) return false;
+        let initValue = initRange.left;
+
+
+        if (condexpr.type !== "expr" && condexpr.children[0].type !== "binary") return false;
+        condexpr = condexpr.children[0];
+        if (condexpr.token.data !== "<" && condexpr.token.data !== ">") return false;
+        if (condexpr.children[0].type !== "ident") return false;
+        //todo: check variable name
+        //if (condexpr.children[0].token.data !== )
+        let limit = getConst(condexpr.children[1]);
+        if (limit === undefined) return false;
+
+        let step;
+        if (changeexpr.type !== "expr") return false;
+        changeexpr = changeexpr.children[0];
+        switch (changeexpr.token.data) {
+            case "++":
+                step = +1; break;
+            case "--":
+                step = -1; break;
+            case "+=":
+                step = getConst(changeexpr.children[1]);
+                break;
+            case "-=":
+                step = -getConst(changeexpr.children[1]);
+                break;
+            default:
+                return false;
+        }
+        //console.log("loop", iteratorVar, initValue, limit, step);
+
+        let loop = {iteratorVar};
+        loopCallStack.push(loop);
+        out.push({op: "_watch", out: [varPtr(iteratorVar)], args: [], line: node.token.line});
+        
+        let condition = limit > initValue ? i => i < limit : i => i > limit;
+        for (let i = initValue; condition(i); i += step ) {
+
+            //todo: copy-paste from process
+            let constValue = map.getConst(i) || map.addConst(i, iteratorVar.type);
+
+            out.push({op: "=", out: [varPtr(iteratorVar)], args: [varPtr(constValue)], line: node.token.line});
+            process(body);
+        }
+
+
+        out.push({op: "_endwatch", out: [varPtr(iteratorVar)], args: [], line: node.token.line});
+        loopCallStack.pop();
+        return true;
+    }
+
+    function forloop(node) {
+        if (!simpleloop(node)) {
+            throw new Error("Sorry, non-trivial loops not supported")
+        }
+    }
+
+    function unary(node) {
+        let fakeNode = {...node, token: {
+            ...node.token,
+            data: "unary"+node.token.data
+        }}
+        return operator(fakeNode);
     }
 
     function process(node) {
@@ -436,6 +601,8 @@ export function convert(ast, map = new VariablesMap()) {
             case "binary":
             case "operator":
                 return operator(node);
+            case "unary":
+                return unary(node);
             case "stmtlist":
             case "stmt":
                 return processChildren(node);
@@ -448,9 +615,13 @@ export function convert(ast, map = new VariablesMap()) {
                 return ifcondition(node); 
             case "return":
                 return returnexpr(node);
+            case "forloop":
+                return forloop(node);
+            case "break":
+                return breakexpr(node);
 
         }
-        console.warn("unknown node type: " + node.type);
+        console.warn("unknown node type: " + node.type, node);
         return processChildren(node);
     }
 
@@ -523,6 +694,13 @@ function devecNothing(op, map) {
     return op;
 }
 
+/*function devecMix(op, map) {
+    //vecX = mix(vecX, vecX, float)
+    //float = mix(float, float, float);
+    let out = devecMath(op, map);
+    out.args.push(op.args[2]);
+}*/
+
 function devecMath(op, map) {
     //case 1 - vecX vs vecX
     //case 2 - vecX vs float
@@ -533,7 +711,7 @@ function devecMath(op, map) {
     if (op.args.length > 1) {
         arg2 = getPtrComponents(op.args[1], map);
     }
-    if (op.args.length > 2) { //clamp case
+    if (op.args.length > 2) { //clamp/mix case
         arg2 = arg2.concat(getPtrComponents(op.args[2], map));
     }
     while (outArgs.length < 4) outArgs.push(noVarPtr());
@@ -580,7 +758,10 @@ function ensureNoVectors(op, map) {
 export function devectorize(ops, map) {
     let out = [];
     for (let variable of map.getVariables()) {
-        if (variable.type.startsWith("vec")) {
+        if (variable.type === undefined) {
+            console.warn("Variable ", variable.name, " has no type", variable);
+        }
+        else if (variable.type.startsWith("vec")) {
             let vecSize = parseInt(variable.type.substring(3));
             let components = [variable];
             for (let i = 1; i < vecSize; i++) {
@@ -650,7 +831,9 @@ export function prepareForAnalysis(ops, map) {
 
             op: op.op
         }
-        if (newOp.opCode === undefined) throw new Error("no op!" + op.op);
+        if (newOp.opCode === undefined) {
+            throw new Error("no op!" + op.op);
+        }
         out.push(newOp);
         cmdId++;
     }

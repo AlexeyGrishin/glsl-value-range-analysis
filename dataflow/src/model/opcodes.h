@@ -38,6 +38,7 @@ enum OpCode {
     _output_op = 35,
     _watch_op = 36,
     _ignore_op = 37,
-    _endwatch_op = 38
+    _endwatch_op = 38,
+    _copy_op = 39
 };
-#define MAX_OPS 39
+#define MAX_OPS 40

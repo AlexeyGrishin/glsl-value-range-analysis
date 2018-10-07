@@ -62,10 +62,12 @@ struct Branch {
     bool skip;
     unsigned int nestedIfs;
 
+    VarId stopSkipOnWatchEnd;
+
     Branch(){}
 
     Branch(BranchId id, BranchId parentId, CmdId cmdId, VarId varId): 
-        id(id), parentId(parentId), cmdId(cmdId), varId(varId), active(true), skip(false), nestedIfs(0) {}
+        id(id), parentId(parentId), cmdId(cmdId), varId(varId), active(true), skip(false), nestedIfs(0), stopSkipOnWatchEnd(UNKNOWN_VAR) {}
 
 };
 
@@ -150,8 +152,28 @@ public:
 
         if (branch->nestedIfs > 0) {
             branch->nestedIfs--;
-        } else if (branch->skip) {
+        } else if (branch->skip && branch->stopSkipOnWatchEnd == UNKNOWN_VAR) {
             branch->skip = false;
+        }
+    }
+
+    void onWatch(VarId id) {
+        //actually do nothing
+    }
+
+    void onEndWatch(VarId id) {
+        Branch* branch = ctx->getBranch(branchId);
+        if (branch->skip && branch->stopSkipOnWatchEnd == id) {
+            branch->skip = false;
+            branch->stopSkipOnWatchEnd = UNKNOWN_VAR;
+        }
+    }
+
+    void onIgnoreWatch(VarId id) {
+        Branch* branch = ctx->getBranch(branchId);
+        if (!branch->skip) {
+            branch->skip = true;
+            branch->stopSkipOnWatchEnd = id;
         }
     }
 

@@ -15,6 +15,11 @@ typedef unsigned int CmdId;
 typedef unsigned int BranchId;
 typedef unsigned int VarId;
 
+//todo: redo with const
+#define UNKNOWN_VAR 0
+
+const double Eps = 1e-10;
+
 template<class T>
 struct Array {
     T* items;

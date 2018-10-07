@@ -29,11 +29,20 @@ uniform vec2 textureCoord /*0,1*/;
 
 void main() {
 
-    float a = 0.2;
-    for (int i = 0; i < 5; i++) {
-        a += 0.2;
+    const float b = 0.2;
+    float a = b;
+    float c = 0.;
+    for (int i = 0; i < 3; i++) {
+        a += 0.1;
+        c += float(i);
     }
-    gl_FragColor = vec4(a);
+    for (int i = 4; i > -5; i-=2) {
+        a += b;
+        if (a > 0.7) break;
+    }
+    a = power(a, -(-2.));
+
+    gl_FragColor = mix(vec4(0.5), vec4(0.6), a);
 
 }
 `;
@@ -82,12 +91,22 @@ function printNode(node, indent = 0) {
     for (let c of node.children || []) printNode(c, indent+1);
 }
 
+function addCommonVars(map) {
+    map.addVariable("gl_FragColor", "vec4");
+}
+
+function addShadertoyVars(map) {
+    map.addVariable("fragColor", "vec4");
+    map.addVariable("iTime", "float");
+}
+
 const DEBUG = true;
 function process(src) {
 
     let tree = ParseTokens(TokenString(src));
     let map = new VariablesMap();
-    map.addVariable("gl_FragColor", "vec4");
+    addCommonVars(map);
+    addShadertoyVars(map);
 
     function idToStr(varPtr) {
         if (varPtr.id === 0) return '_';
@@ -104,6 +123,7 @@ function process(src) {
     if (DEBUG) {
         console.group("tree");
         printNode(tree);
+        console.log(map);
         console.groupEnd();
     }
     if (DEBUG) {
@@ -147,7 +167,7 @@ function process(src) {
     flow.getReport(report);
     if (DEBUG) {
         let filter = () => true;
-        //let filter = (r) => r.varId == 1;
+        //let filter = (r) => r.varId == 31;
         //let filter = (r) => r.varId == map.getVariable("k.x").id
         console.groupCollapsed("response");
         console.log(JSON.stringify(report.filter(filter), null, 4));

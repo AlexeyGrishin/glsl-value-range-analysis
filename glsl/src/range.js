@@ -12,6 +12,8 @@ export default class Range {
         this.flag = flag;
     }
 
+    get isSingle() { return this.left === this.right; }
+
     get includeLeft() { return this.flag & INCLUDE_LEFT; }
     get includeRight() { return this.flag & INCLUDE_RIGHT; }
     get nonFloat() { return this.flag === IGNORE; }
@@ -31,7 +33,7 @@ export default class Range {
 
     static create(type, rangeAsStr) {
         if (type === "boolean") return new Range(0, 1, INCLUDE_BOTH);
-        if (type !== "float" && type !== "integer") return Range.none;
+        if (type !== "float" && type !== "integer" && type !== "int") return Range.none;
         if (typeof rangeAsStr === "number") return new Range(rangeAsStr, rangeAsStr, INCLUDE_BOTH);
         if (!rangeAsStr) return new Range(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, INCLUDE_BOTH);
         let [left,right] = rangeAsStr.split(",");
