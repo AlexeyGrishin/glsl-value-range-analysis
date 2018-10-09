@@ -2,6 +2,8 @@
 #include "defs.h"
 #include "opcodes.h"
 #include "range.h"
+#include <array>
+#include <memory>
 
 class LocalContext;
 
@@ -39,7 +41,7 @@ public:
 
 class OpsRegistry {
 private:
-    BaseOp* ops[MAX_OPS];
+    std::array<std::unique_ptr<BaseOp>, MAX_OPS> ops;
     static OpsRegistry* singleton;
     OpsRegistry();
 public:

@@ -1,6 +1,9 @@
 #pragma once
 #include "defs.h"
 #include "range.h"
+#include <map>
+#include <vector>
+#include <memory>
 
 class RestoreRange;
 
@@ -8,23 +11,17 @@ struct TypeRangeChange {
     BranchId branchId;
     CmdId cmdId;
     TypeRange newRange;
-    RestoreRange* restore;
+    std::unique_ptr<RestoreRange> restore;
     TypeReason reason;
-    //todo: here could be linked list instead
-};
 
-struct BranchNode {
-    BranchId branchId;
-    TypeRangeChange* change;
-    BranchNode* prev;
+    TypeRangeChange(BranchId branchId, CmdId cmdId, TypeRange range, RestoreRange* restore, TypeReason reason);
 };
 
 class Variable {
 private:
     TypeRange initialRange;
-    int lastChangeId;
-    TypeRangeChange* changes[MAX_RANGE_CHANGES];
-    BranchNode* tail;
+    std::vector<std::unique_ptr<TypeRangeChange>> changes;
+    std::map<BranchId, TypeRangeChange*> lastBranchChanges;
     bool isActiveFlag;
 public:
 
@@ -34,11 +31,12 @@ public:
     void changeRange(BranchId branchId, CmdId cmdId, const TypeRange& range, TypeReason reason, RestoreRange* restorer);
     void initBranch(BranchId branchId, BranchId parentBranchId);
     void forget();
+
     const TypeRange* getRange(BranchId branchId) const;
     const TypeRangeChange* getLastChangeForBranch(BranchId branchId) const;
 
-    unsigned int getChangesCount() const;
-    const TypeRangeChange& getChange(unsigned int id) const;
+    //todo: return iterator would be better
+    const std::vector<const TypeRangeChange*> getChanges() const;
 
     ~Variable();
     

@@ -35,6 +35,6 @@ fs.writeFileSync(path.join(".", "dataflow", "src", "model", "opcodes.h"), `
 enum OpCode {
     ${OpCodes.map((opcode, idx) => `${opcode}_op = ${idx+1}`).join(",\n    ")}
 };
-#define MAX_OPS ${OpCodes.length+1}
+constexpr unsigned int MAX_OPS = ${OpCodes.length+1};
 `)
 

@@ -1,5 +1,6 @@
 #include "range_ops.h"
 #include "../defs.h"
+#include <algorithm>
 
 TypeRange RangeOps::sin(const TypeRange& input)
 {
@@ -14,12 +15,12 @@ TypeRange RangeOps::cos(const TypeRange& input)
 
 TypeRange RangeOps::min(const TypeRange& arg1, const TypeRange& arg2)
 {
-    return TypeRange(MIN(arg1.left, arg2.left), MIN(arg1.right, arg2.right));
+    return TypeRange(std::min(arg1.left, arg2.left), std::min(arg1.right, arg2.right));
 }
 
 TypeRange RangeOps::max(const TypeRange& arg1, const TypeRange& arg2)
 {
-    return TypeRange(MAX(arg1.left, arg2.left), MAX(arg1.right, arg2.right));
+    return TypeRange(std::max(arg1.left, arg2.left), std::max(arg1.right, arg2.right));
 }
 
 TypeRange RangeOps::clamp(const TypeRange& arg1, const TypeRange& arg2, const TypeRange& arg3)
@@ -45,7 +46,7 @@ TypeRange RangeOps::power(const TypeRange& arg1, const TypeRange& arg2)
     double a3 = pow(arg1.right, arg2.left);
     double a4 = pow(arg1.right, arg2.right);
 
-    return TypeRange(MIN(MIN(a1, a2), MIN(a3, a4)), MAX(MAX(a1, a2), MAX(a3, a4)));
+    return TypeRange(std::min(std::min(a1, a2), std::min(a3, a4)), std::max(std::max(a1, a2), std::max(a3, a4)));
 }
 
 TypeRange RangeOps::mix(const TypeRange& arg1, const TypeRange& arg2, const TypeRange& mix)
@@ -61,9 +62,9 @@ TypeRange RangeOps::mix(const TypeRange& arg1, const TypeRange& arg2, const Type
         right1 = arg1.left * (1 - mix.right) + arg2.left * mix.right;
         right2 = arg1.right * (1 - mix.right) + arg2.right * mix.right;
     }
-    double realLeft = MIN(left1, left2);
-    double realRight = MAX(right1, right2);
-    return TypeRange(MIN(realLeft, realRight), MAX(realLeft, realRight));
+    double realLeft = std::min(left1, left2);
+    double realRight = std::max(right1, right2);
+    return TypeRange(std::min(realLeft, realRight), std::max(realLeft, realRight));
 }
 
 TypeRange RangeOps::dot(const TypeRange& arg1, const TypeRange& arg2, const TypeRange& arg3, const TypeRange& arg4,
@@ -101,13 +102,13 @@ TypeRange RangeOps::abs(const TypeRange& arg1)
 {
     double leftAbs = ::fabs(arg1.left);
     double rightAbs = ::fabs(arg1.right);
-    double maxAbs = MAX(leftAbs, rightAbs);
+    double maxAbs = std::max(leftAbs, rightAbs);
     double minAbs;
     if (arg1.includes(0)) {
         minAbs = 0;
     }
     else {
-        minAbs = MIN(leftAbs, rightAbs);
+        minAbs = std::min(leftAbs, rightAbs);
     }
     return TypeRange(minAbs, maxAbs);
 }

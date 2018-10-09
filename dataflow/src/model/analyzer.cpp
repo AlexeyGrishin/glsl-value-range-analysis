@@ -11,10 +11,9 @@ DataFlowAnalyzer::DataFlowAnalyzer()
 //todo: set const everywhere
 ProcessResult DataFlowAnalyzer::processCommand(Command* command)
 {
-    Branch* branch = context.getFirstBranch();
-    BranchId lastId = context.getLastBranchId();
+    auto branches = context.getActiveBranches();
     ProcessResult res = PR_OK;
-    while (branch != NULL && (branch->id <= lastId)) {
+    for (auto branch: branches) {
         local.setup(branch->id, command);
         switch (command->opCode)
         {
@@ -39,11 +38,10 @@ ProcessResult DataFlowAnalyzer::processCommand(Command* command)
                 }
                 break;
         }
-        branch = context.getNextBranch(branch);
     }
 
-    branch = context.getFirstBranch();
-    while (branch != NULL) {
+    branches = context.getActiveBranches();
+    for (auto branch: branches) {
         local.setup(branch->id, command);
         switch (command->opCode)
         {
@@ -71,7 +69,6 @@ ProcessResult DataFlowAnalyzer::processCommand(Command* command)
                 }
                 break;
         }
-        branch = context.getNextBranch(branch);
     }
     return res;
 
@@ -82,17 +79,17 @@ const TypeRange* DataFlowAnalyzer::getRange(BranchId branchId, VarId varId) cons
     return context.getVariable(varId).getRange(branchId);
 }
 
-Array<Warning> DataFlowAnalyzer::getWarnings() const
+const std::vector<Warning> DataFlowAnalyzer::getWarnings() const
 {
     return context.getWarnings(); 
 }
 
-Array<Branch> DataFlowAnalyzer::getBranches() const
+const std::vector<Branch> DataFlowAnalyzer::getBranches() const
 {
     return context.getBranches();
 }
 
-Array<VariableChange> DataFlowAnalyzer::getChanges() const
+const std::vector<VariableChange> DataFlowAnalyzer::getChanges() const
 {
     return context.getChanges();
 }

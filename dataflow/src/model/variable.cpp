@@ -1,54 +1,28 @@
 #include "variable.h"
 #include "ops.h"
 
-Variable::Variable(BranchId branchId, CmdId cmdId, TypeRange initialRange) : initialRange(initialRange), lastChangeId(0), tail(NULL), isActiveFlag(true) {
-    for (int i = 0; i < MAX_RANGE_CHANGES; i++) changes[i] = NULL;
-    changeRange(branchId, cmdId, initialRange, TR_Operation, NULL);
+
+TypeRangeChange::TypeRangeChange(BranchId branchId, CmdId cmdId, TypeRange range, RestoreRange* restore, TypeReason reason)
+    : branchId(branchId), cmdId(cmdId), newRange(range), restore(restore), reason(reason)
+{}
+
+Variable::Variable(BranchId branchId, CmdId cmdId, TypeRange initialRange) 
+: initialRange(initialRange), isActiveFlag(true) {
+    changeRange(branchId, cmdId, initialRange, TR_Operation, nullptr);
 }
 
 void Variable::changeRange(BranchId branchId, CmdId cmdId, const TypeRange& range, TypeReason reason, RestoreRange* restorer)
 {
-    TypeRangeChange* change = new TypeRangeChange();
-    change->branchId = branchId;
-    change->cmdId = cmdId;
-    change->newRange = range;
-    change->restore = restorer;
-    change->reason = reason;
-    changes[lastChangeId++] = change;
-    BranchNode* node = tail;
-    while (node) {
-        if (node->branchId == branchId) {
-            break;
-        }
-        node = node->prev; 
-    }
-    if (node) {
-        node->change = change;
-    }
-    else {
-        BranchNode* prev = tail;
-        tail = new BranchNode();
-        tail->branchId = branchId;
-        tail->change = change;
-        tail->prev = prev;
-    }
+    auto changePtr = std::make_unique<TypeRangeChange>(branchId, cmdId, range, restorer, reason);
+    lastBranchChanges[branchId] = changePtr.get();
+    changes.push_back(std::move(changePtr));
 }
 
 void Variable::initBranch(BranchId branchId, BranchId parentBranchId)
 {
-    BranchNode* parentBranchNode = tail;
-    while (parentBranchNode) {
-        if (parentBranchNode->branchId == parentBranchId) {
-            break;
-        }
-        parentBranchNode = parentBranchNode->prev;
-    }
-    if (parentBranchNode != NULL) {
-        BranchNode* prev = tail;
-        tail = new BranchNode();
-        tail->branchId = branchId;
-        tail->change = parentBranchNode->change;
-        tail->prev = prev;
+    auto parentChange = lastBranchChanges.find(parentBranchId);
+    if (parentChange != lastBranchChanges.end()) {
+        lastBranchChanges[branchId] = parentChange->second;
     }
 }
 
@@ -59,41 +33,25 @@ void Variable::forget()
 
 const TypeRange* Variable::getRange(BranchId branchId) const
 {
-    //todo: instead, go through changes from tail and look for branch. or maybe have this array dynamic/linked list. and do not init if it is not used anymore
-    //lookup is not so frequent, so it could be slower
-    BranchNode* node = tail;
-    while (node) {
-        if (node->branchId == branchId) {
-            return &node->change->newRange;
-        }
-        node = node->prev;
-    }
-    return NULL;
+    auto bit = lastBranchChanges.find(branchId);
+    return bit == lastBranchChanges.end() ? nullptr : &bit->second->newRange;
 } 
 
 const TypeRangeChange* Variable::getLastChangeForBranch(BranchId branchId) const
 {
-    BranchNode* node = tail;
-    while (node) {
-        if (node->branchId == branchId) {
-            return node->change;
-        }
-        node = node->prev;
+    auto bit = lastBranchChanges.find(branchId);
+    return bit == lastBranchChanges.end() ? nullptr : bit->second;
+}
+
+const std::vector<const TypeRangeChange*> Variable::getChanges() const
+{
+    std::vector<const TypeRangeChange*> out;
+    for (auto& it: changes)
+    {
+        out.push_back(it.get());
     }
-    return NULL;
+    return out;
 }
-
-
-unsigned int Variable::getChangesCount() const
-{
-    return lastChangeId;
-}
-
-const TypeRangeChange& Variable::getChange(unsigned int id) const
-{
-    return *changes[id];
-}
-
 
 
 bool Variable::isActive() 
@@ -103,14 +61,4 @@ bool Variable::isActive()
 
 Variable::~Variable()
 {
-    for (int i = 0; i < lastChangeId; i++) {
-        delete changes[i]->restore;
-        delete changes[i];
-    }
-    BranchNode* node = tail, *tmp;
-    while (node) {
-        tmp = node;
-        node = node->prev;
-        delete tmp;
-    }
 }

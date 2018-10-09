@@ -3,6 +3,8 @@
 #include "command.h"
 #include "variable.h"
 #include "ops.h"
+#include <vector>
+#include <map>
 
 struct Branch;
 struct Warning;
@@ -12,12 +14,11 @@ class AnalisysContext {
 private:
     //todo: redo with linked lists. also there could be separate list of active variables/branches, 
     //to iterate over them only 
-    Variable* variables[MAX_VARIABLES];
+    //todo: do I need map here? not just vector?
+    std::map<VarId, std::unique_ptr<Variable>> variables;
     VarId maxCreatedId;
-    Branch* branches[MAX_BRANCHES];
-    BranchId nextBranchId;
-    Warning* warnings[MAX_WARNINGS];
-    unsigned int warningsCount;
+    std::vector<std::unique_ptr<Branch>> branches;
+    std::vector<Warning> warnings;
 
     void populateChanges(CmdId id, BranchId branchId, BranchId parentBranchId, VarId varId, const TypeRange& changedRange);
 public:
@@ -25,19 +26,18 @@ public:
 
     void createVariable(BranchId branchId, CmdId cmdId, VarId id, const TypeRange& range);
     void forgetVariable(VarId id);
-    Variable& getVariable(VarId id) const; 
+    Variable& getVariable(VarId id); 
+    const Variable& getVariable(VarId id) const; 
     BranchId createBranch(BranchId parentId, CmdId cmdId, VarId variable, const TypeRange& range);
 
-    Branch* getFirstBranch() const;
-    BranchId getLastBranchId() const;
-    Branch* getNextBranch(Branch* branch) const;
+    std::vector<const Branch*> getActiveBranches() const;
     Branch* getBranch(BranchId id) const;
 
-    void addWarning(Command* command, BranchId branchId, VarId variable, unsigned int argNr, TypeRange expected, TypeRange actual);
+    void addWarning(const Command* command, BranchId branchId, VarId variable, unsigned int argNr, TypeRange expected, TypeRange actual);
 
-    Array<Warning> getWarnings() const;
-    Array<Branch>  getBranches() const;
-    Array<VariableChange> getChanges() const;
+    const std::vector<Warning> getWarnings() const;
+    const std::vector<Branch>  getBranches() const;
+    const std::vector<VariableChange> getChanges() const;
 
 
     ~AnalisysContext();
@@ -86,12 +86,12 @@ class LocalContext {
 private:
     AnalisysContext* ctx;
     BranchId branchId;
-    Command* command;
+    const Command* command;
 public:
 
-    LocalContext(AnalisysContext* ctx): ctx(ctx), branchId(0), command(NULL) {}
+    LocalContext(AnalisysContext* ctx): ctx(ctx), branchId(0), command(nullptr) {}
 
-    void setup(BranchId branchId, Command* command) {
+    void setup(BranchId branchId, const Command* command) {
         this->command = command;
         this->branchId = branchId;
     }
@@ -111,12 +111,12 @@ public:
 
     void set(int argNr, const TypeRange& newRange) {
         if (!isDefined(argNr)) return;
-        ctx->getVariable(command->arguments[argNr]).changeRange(branchId, command->cmdId, newRange, TR_Operation, NULL);
+        ctx->getVariable(command->arguments[argNr]).changeRange(branchId, command->cmdId, newRange, TR_Operation, nullptr);
     }
 
     void set(int argNr, const TypeRange& newRange, RestoreRange* restorer, unsigned int depArgNr) {
         if (!isDefined(argNr)) return;
-        if (restorer != NULL) {
+        if (restorer != nullptr) {
             restorer->setDependent(getVarId(depArgNr));
             restorer->setChangedAt(command->cmdId);
         }

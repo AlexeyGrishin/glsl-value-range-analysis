@@ -5,20 +5,17 @@
 
 OpsRegistry::OpsRegistry()
 {
-    for (int i = 0; i < MAX_OPS; i++) {
-        ops[i] = NULL;
-    }
 }
 
 void OpsRegistry::add(BaseOp* op)
 {
-    ops[op->code] = op;
+    ops[op->code] = std::unique_ptr<BaseOp>(op);
 }
 
 
 bool OpsRegistry::isKnown(OpCode code)
 {
-    return ops[code] != NULL;
+    return (bool)ops[code];
 }
 
 bool OpsRegistry::createBranches(OpCode code, LocalContext& ctx)
@@ -33,17 +30,14 @@ void OpsRegistry::process(OpCode code, LocalContext& ctx)
 
 
 OpsRegistry::~OpsRegistry() {
-    for (int i = 0; i < MAX_OPS; i++) {
-        delete ops[i];
-    }
 }
 
-OpsRegistry* OpsRegistry::singleton = NULL;
+OpsRegistry* OpsRegistry::singleton = nullptr;
 
 
 OpsRegistry& OpsRegistry::instance()
 {
-    if (singleton == NULL) {
+    if (singleton == nullptr) {
         singleton = new OpsRegistry();
     }
     return *singleton;

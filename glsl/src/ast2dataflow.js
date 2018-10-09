@@ -464,6 +464,7 @@ export function convert(ast, map = new VariablesMap()) {
     function ifcondition(node) {
         let [cond, thenblock, elseblock] = node.children;
         let condVarId = process(cond);
+        //todo: somewhere in future - redo with _watch/_ignore/_endwatch (maybe)
         out.push({op: "_ifeq", args: [condVarId], out: [], range: TypeRange.create("float", 1), line: thenblock.line});
         process(thenblock);
         out.push({op: "_endif", args: [condVarId], out: []});
@@ -519,8 +520,7 @@ export function convert(ast, map = new VariablesMap()) {
         condexpr = condexpr.children[0];
         if (condexpr.token.data !== "<" && condexpr.token.data !== ">") return false;
         if (condexpr.children[0].type !== "ident") return false;
-        //todo: check variable name
-        //if (condexpr.children[0].token.data !== )
+        
         let limit = getConst(condexpr.children[1]);
         if (limit === undefined) return false;
 
@@ -549,8 +549,6 @@ export function convert(ast, map = new VariablesMap()) {
         
         let condition = limit > initValue ? i => i < limit : i => i > limit;
         for (let i = initValue; condition(i); i += step ) {
-
-            //todo: copy-paste from process
             let constValue = map.getConst(i) || map.addConst(i, iteratorVar.type);
 
             out.push({op: "=", out: [varPtr(iteratorVar)], args: [varPtr(constValue)], line: node.token.line});
@@ -694,13 +692,6 @@ function devecNothing(op, map) {
     return op;
 }
 
-/*function devecMix(op, map) {
-    //vecX = mix(vecX, vecX, float)
-    //float = mix(float, float, float);
-    let out = devecMath(op, map);
-    out.args.push(op.args[2]);
-}*/
-
 function devecMath(op, map) {
     //case 1 - vecX vs vecX
     //case 2 - vecX vs float
@@ -839,10 +830,3 @@ export function prepareForAnalysis(ops, map) {
     }
     return out;
 }
-
-
-/*
-todo: pipe it, like
-    op -> convert -> converted_op -> devectorize -> [devectorized_ops] -> ...
-
-*/

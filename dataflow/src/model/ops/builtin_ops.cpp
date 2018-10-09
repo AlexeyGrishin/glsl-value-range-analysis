@@ -39,7 +39,7 @@ void plus(LocalContext& ctx, unsigned int out, unsigned int arg1, unsigned int a
     if (!ctx.isDefined(out)) return;
     const TypeRange& r1 = ctx.get(arg1);
     const TypeRange& r2 = ctx.get(arg2);
-    RestorePlus* restore = NULL;
+    RestorePlus* restore = nullptr;
     unsigned int dependent = 0;
     if (r2.isSingle()) {
         restore = new RestorePlus(r2);
@@ -61,7 +61,7 @@ void minus(LocalContext& ctx, unsigned int out, unsigned int arg1, unsigned int 
     if (!ctx.isDefined(out)) return;
     const TypeRange& r1 = ctx.get(arg1);
     const TypeRange& r2 = ctx.get(arg2);
-    RestoreMinus* restore = NULL;
+    RestoreMinus* restore = nullptr;
     unsigned int dependent = 0;
     if (r2.isSingle()) {
         restore = new RestoreMinus(r2);
