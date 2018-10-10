@@ -18,10 +18,10 @@ ProcessResult DataFlowAnalyzer::processCommand(Command* command)
         switch (command->opCode)
         {
             case _define_op:
-                context.createVariable(branch->id, command->cmdId, command->arguments[0], command->range);
+                context.createVariable(branch->id, command->cmdId, command->getArgument(0), command->range);
                 break;
             case _forget_op:
-                context.forgetVariable(command->arguments[0]);
+                context.forgetVariable(command->getArgument(0));
                 break;
             case _ifeq_op:
             case _endif_op:
@@ -55,13 +55,13 @@ ProcessResult DataFlowAnalyzer::processCommand(Command* command)
                 local.onEndIf();
                 break;
             case _watch_op:
-                local.onWatch(command->arguments[0]);
+                local.onWatch(command->getArgument(0));
                 break;
             case _endwatch_op:
-                local.onEndWatch(command->arguments[0]);
+                local.onEndWatch(command->getArgument(0));
                 break;
             case _ignore_op:
-                local.onIgnoreWatch(command->arguments[0]);
+                local.onIgnoreWatch(command->getArgument(0));
                 break;
             default:
                 if (!branch->skip && ops.isKnown(command->opCode)) {

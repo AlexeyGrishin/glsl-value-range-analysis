@@ -4,10 +4,7 @@
 #ifdef TEST
   #include "stdio.h"
 #else
-  #ifdef NOLOG
-    #define printf(...)
-    #define fflush(...)
-  #else
+  #ifndef NOLOG
     #include <cheerp/clientlib.h>
     #include <cheerp/client.h>
     [[cheerp::genericjs]] void consoleLog(const char*);

@@ -13,3 +13,13 @@ void Command::addArgument(VarId arg)
 {
     this->arguments.push_back(arg);
 }
+
+bool Command::hasArgument(unsigned int nr) const
+{
+    return nr < this->arguments.size() && this->arguments[nr] != UNKNOWN_VAR;
+}
+
+VarId Command::getArgument(unsigned int nr) const
+{
+    return nr < this->arguments.size() ? this->arguments[nr] : UNKNOWN_VAR;
+}

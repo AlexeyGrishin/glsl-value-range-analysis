@@ -4,13 +4,20 @@
 #include "range.h"
 #include <vector>
 
-struct Command {
+class Command {
+private:
+    std::vector<VarId> arguments;
+
+public:
     CmdId cmdId;
     OpCode opCode;
-    std::vector<VarId> arguments;
     TypeRange range; //for some commands like _define
 
     Command(CmdId cmdId, OpCode opCode);
+
     void setRange(TypeRange range);
     void addArgument(VarId arg);
+    bool hasArgument(unsigned int nr) const;
+    VarId getArgument(unsigned int nr) const;
+
 };

@@ -97,21 +97,21 @@ public:
     }
 
     bool isDefined(int argNr) {
-        return command->arguments[argNr] != 0;
+        return command->hasArgument(argNr);
     }
 
     VarId getVarId(int argNr) const {
-        return command->arguments[argNr];
+        return command->getArgument(argNr);
     }
 
     const TypeRange& get(int argNr) {
-        const TypeRange* out = ctx->getVariable(command->arguments[argNr]).getRange(branchId);
+        const TypeRange* out = ctx->getVariable(command->getArgument(argNr)).getRange(branchId);
         return *out;
     }
 
     void set(int argNr, const TypeRange& newRange) {
         if (!isDefined(argNr)) return;
-        ctx->getVariable(command->arguments[argNr]).changeRange(branchId, command->cmdId, newRange, TR_Operation, nullptr);
+        ctx->getVariable(command->getArgument(argNr)).changeRange(branchId, command->cmdId, newRange, TR_Operation, nullptr);
     }
 
     void set(int argNr, const TypeRange& newRange, RestoreRange* restorer, unsigned int depArgNr) {
@@ -120,7 +120,7 @@ public:
             restorer->setDependent(getVarId(depArgNr));
             restorer->setChangedAt(command->cmdId);
         }
-        ctx->getVariable(command->arguments[argNr]).changeRange(branchId, command->cmdId, newRange, TR_Operation, restorer);
+        ctx->getVariable(command->getArgument(argNr)).changeRange(branchId, command->cmdId, newRange, TR_Operation, restorer);
     }
 
     void set(int argNr, bool bval) {
@@ -129,11 +129,11 @@ public:
 
     void createBranch(int argNr, const TypeRange& range) {
         if (!range.isValid() || !isDefined(argNr)) return;
-        ctx->createBranch(branchId, command->cmdId, command->arguments[argNr], range);
+        ctx->createBranch(branchId, command->cmdId, command->getArgument(argNr), range);
     }
 
     void addWarning(unsigned int argNr, TypeRange expectedRange) {
-        ctx->addWarning(command, branchId, command->arguments[argNr], argNr, expectedRange, get(argNr));
+        ctx->addWarning(command, branchId, command->getArgument(argNr), argNr, expectedRange, get(argNr));
     }
 
     void onIf() {
