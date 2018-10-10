@@ -33,7 +33,7 @@ public:
     std::vector<const Branch*> getActiveBranches() const;
     Branch* getBranch(BranchId id) const;
 
-    void addWarning(const Command* command, BranchId branchId, VarId variable, unsigned int argNr, TypeRange expected, TypeRange actual);
+    void addWarning(const Command* command, BranchId branchId, VarId variable, unsigned int argNr, const TypeRange& expected, const TypeRange& actual);
 
     const std::vector<Warning> getWarnings() const;
     const std::vector<Branch>  getBranches() const;
@@ -64,7 +64,7 @@ struct Branch {
 
     VarId stopSkipOnWatchEnd;
 
-    Branch(){}
+    //Branch(){}
 
     Branch(BranchId id, BranchId parentId, CmdId cmdId, VarId varId): 
         id(id), parentId(parentId), cmdId(cmdId), varId(varId), active(true), skip(false), nestedIfs(0), stopSkipOnWatchEnd(UNKNOWN_VAR) {}
@@ -132,7 +132,7 @@ public:
         ctx->createBranch(branchId, command->cmdId, command->getArgument(argNr), range);
     }
 
-    void addWarning(unsigned int argNr, TypeRange expectedRange) {
+    void addWarning(unsigned int argNr, const TypeRange& expectedRange) {
         ctx->addWarning(command, branchId, command->getArgument(argNr), argNr, expectedRange, get(argNr));
     }
 

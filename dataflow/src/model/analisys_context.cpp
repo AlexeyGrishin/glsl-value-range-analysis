@@ -1,3 +1,6 @@
+// This is an independent project of an individual developer. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+
 #include "analisys_context.h"
 #include "ops.h"
 #include "log.h"
@@ -97,7 +100,7 @@ void AnalisysContext::populateChanges(CmdId cmdId, BranchId branchId, BranchId p
     }
 }
 
-void AnalisysContext::addWarning(const Command* command, BranchId branchId, VarId variable, unsigned int argNr, TypeRange expected, TypeRange actual)
+void AnalisysContext::addWarning(const Command* command, BranchId branchId, VarId variable, unsigned int argNr, const TypeRange& expected, const TypeRange& actual)
 {
     Warning w = {branchId, command->cmdId, command->opCode, argNr, variable, expected, actual};
     warnings.push_back(w);

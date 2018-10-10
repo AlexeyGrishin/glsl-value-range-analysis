@@ -15,7 +15,7 @@ public:
 
     Command(CmdId cmdId, OpCode opCode);
 
-    void setRange(TypeRange range);
+    void setRange(const TypeRange& range);
     void addArgument(VarId arg);
     bool hasArgument(unsigned int nr) const;
     VarId getArgument(unsigned int nr) const;

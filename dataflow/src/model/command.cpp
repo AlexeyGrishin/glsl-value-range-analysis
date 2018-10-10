@@ -1,10 +1,13 @@
+// This is an independent project of an individual developer. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+
 #include "command.h"
 
 Command::Command(CmdId cmdId, OpCode opCode): cmdId(cmdId), opCode(opCode)
 {
 }
 
-void Command::setRange(TypeRange range)
+void Command::setRange(const TypeRange& range)
 {
     this->range = range;
 }
