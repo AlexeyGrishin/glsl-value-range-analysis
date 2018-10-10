@@ -1,4 +1,5 @@
 #include "range.h"
+#include <algorithm>
 
 bool TypeRange::includes(double n) const
 {
@@ -71,7 +72,7 @@ TypeRange TypeRange::operator*(const TypeRange& another) const
     double rl = right*another.left;
     double rr = right*another.right;
 
-    return TypeRange(MIN(MIN(ll, lr), MIN(rl,rr)), MAX(MAX(ll, lr), MAX(rl, rr)), merge(flag, another.flag));
+    return TypeRange(std::min(std::min(ll, lr), std::min(rl,rr)), std::max(std::max(ll, lr), std::max(rl, rr)), merge(flag, another.flag));
 }
 
 bool fequal(double left, double right) {

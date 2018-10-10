@@ -8,6 +8,8 @@
 #include "model/ops.h"
 #include "model/ops/builtin_ops.h"
 
+#include <vector>
+
 namespace client {
     [[cheerp::genericjs]]
     Object*  createRange(double left, double right, int flag);
@@ -22,7 +24,7 @@ class [[cheerp::genericjs]] [[cheerp::jsexport]] DataFlowApi {
 private:
     DataFlowAnalyzer* analyzer;
 public:
-    DataFlowApi(): analyzer(NULL) {}
+    DataFlowApi(): analyzer(nullptr) {}
 
     void init() {
         analyzer = new DataFlowAnalyzer();
@@ -42,15 +44,11 @@ public:
         }
         return analyzer->processCommand(&cmd);
     }
-    void getSomething(client::Array* report) {
-        report->push(new client::Number(123));
-    }
 
     void getReport(client::Array* report) {
-        Array<Warning> warnings = analyzer->getWarnings();
+        auto warnings = analyzer->getWarnings();
 
-        for (int i = 0; i < warnings.count; i++) {
-            Warning& w = warnings.items[i];
+        for (auto& w: warnings) {
             client::Object* object = new client::Object();
             object->set_("type", new client::String("warning"));
             object->set_("opCode", new client::Number(w.call));
@@ -63,10 +61,9 @@ public:
             report->push(object);
         }
 
-        Array<Branch> branches = analyzer->getBranches();
+        auto branches = analyzer->getBranches();
 
-        for (int i = 0; i < branches.count; i++) {
-            Branch& b = branches.items[i];
+        for (auto& b: branches) {
             client::Object* object = new client::Object();
             object->set_("type", new client::String("branch"));
             object->set_("branchId", new client::Number(b.id));
@@ -77,11 +74,8 @@ public:
             report->push(object);
         }
 
-        Array<VariableChange> changes = analyzer->getChanges();
-
-
-        for (int i = 0; i < changes.count; i++) {
-            VariableChange& c = changes.items[i];
+        auto changes = analyzer->getChanges();
+        for (auto& c: changes) {
             client::Object* object = new client::Object();
             object->set_("type", new client::String("change"));
             object->set_("branchId", new client::Number(c.branchId));
@@ -102,10 +96,6 @@ public:
             }
             report->push(object);            
         }
-
-        warnings.free();
-        changes.free();
-        branches.free();
     }
 };
 

@@ -22,8 +22,8 @@ public:
     ProcessResult processCommand(Command* command);
 
     const TypeRange* getRange(BranchId branchId, VarId varId) const;
-    //todo: maybe use std::list and v us ne dut?
-    Array<Warning> getWarnings() const;
-    Array<Branch>  getBranches() const;
-    Array<VariableChange> getChanges() const;
+    const std::vector<Warning> getWarnings() const;
+    const std::vector<Branch>  getBranches() const;
+    const std::vector<VariableChange> getChanges() const;
+
 };

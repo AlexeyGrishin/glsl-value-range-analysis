@@ -7,38 +7,30 @@
 
 
 void print(DataFlowAnalyzer& analyzer) {
-    Array<Warning> warnings = analyzer.getWarnings();
+    auto warnings = analyzer.getWarnings();
 
-    for (unsigned int i = 0; i < warnings.count; i++) {
-        Warning& w = warnings.items[i];
+    for (auto& w: warnings) {
         printf("!! warning when call %d@branch#%d: arg %d(var %d) has range %f-%f but expected %f-%f\n", 
             w.call, w.branchId, w.argumentNr, w.varId, 
             w.actualRange.left, w.actualRange.right, 
             w.expectedRange.left, w.expectedRange.right);
     }
 
-    Array<Branch> branches = analyzer.getBranches();
+    auto branches = analyzer.getBranches();
 
-    for (unsigned int i = 0; i < branches.count; i++) {
-        Branch& b = branches.items[i];
+    for (auto& b: branches) {
         printf("-- branch %d (parent %d, %s) created for var %d changed in %d\n", b.id, b.parentId, b.active ? "active" : "inactive", b.varId, b.cmdId);
     }
 
     unsigned int changesCount = 0;
-    Array<VariableChange> changes = analyzer.getChanges();
+    auto changes = analyzer.getChanges();
 
-
-    for (unsigned int i = 0; i < changes.count; i++) {
-        VariableChange& c = changes.items[i];
+    for (auto& c: changes) {
         printf("@@ var %d @ %d, cmd %d, change to %f-%f %s\n", 
             c.varId, c.branchId, c.cmdId, c.newRange.left, c.newRange.right,
             c.revertable ? "[revertable]" : ""
         );
     }
-
-    warnings.free();
-    changes.free();
-    branches.free();
 }
 
 TEST(Analuzer, Creation) 
@@ -129,7 +121,6 @@ TEST(Analyzer, Test_Dependencies) {
     analyzer.processCommand(&cmdPlus);
     analyzer.processCommand(&cmdDefine5);
     analyzer.processCommand(&cmdLt);
-
     //print(analyzer);
 
     //compare result
@@ -299,7 +290,7 @@ TEST(Analyzer, TestStep) {
     analyzer.processCommand(&cmdStep);
 
     print(analyzer);
-    ASSERT_EQ(5, analyzer.getBranches().count);
+    ASSERT_EQ(5, analyzer.getBranches().size());
 
     //todo: for now it is ok, but actually I need ALL variant combinations, like var3=1, var4=0, etc.
     ASSERT_EQ(TypeRange(0), *analyzer.getRange(1, 3));
@@ -359,7 +350,7 @@ TEST(Analyzer, WatchEndWatchIgnore) {
     analyzer.processCommand(&cmdMinus8);
 
     print(analyzer);
-    ASSERT_EQ(1, analyzer.getBranches().count);
+    ASSERT_EQ(1, analyzer.getBranches().size());
     ASSERT_EQ(TypeRange(0), *analyzer.getRange(MAIN_BRANCH, 2));
     
 }
@@ -426,7 +417,7 @@ TEST(Analyzer, WatchEndWatchIgnore_Branches) {
     analyzer.processCommand(&cmdEndWatch12);
 
     print(analyzer);
-    ASSERT_EQ(3, analyzer.getBranches().count);
+    ASSERT_EQ(3, analyzer.getBranches().size());
     ASSERT_EQ(TypeRange(0, 0.5), *analyzer.getRange(1, 3));
     ASSERT_EQ(TypeRange(1, 1.5, INCLUDE_RIGHT), *analyzer.getRange(2, 3));
 
@@ -458,7 +449,7 @@ TEST(Analyzer, Lt_Branches) {
     analyzer.processCommand(&cmdLt4);
 
     print(analyzer);
-    ASSERT_EQ(3, analyzer.getBranches().count);
+    ASSERT_EQ(3, analyzer.getBranches().size());
     ASSERT_EQ(TypeRange(0, 0.5, INCLUDE_LEFT), *analyzer.getRange(1, 2));
     ASSERT_EQ(TypeRange(0.5,1), *analyzer.getRange(2, 2));
 }
@@ -489,10 +480,10 @@ TEST(Analyzer, Lt_AlwaysSingleBranch) {
 
     print(analyzer);
     //expected - branch is not created
-    //ASSERT_EQ(1, analyzer.getBranches().count);
+    //ASSERT_EQ(1, analyzer.getBranches().size());
     //ASSERT_EQ(TypeRange(0, 1), *analyzer.getRange(0, 2));
     //actual - single branch is craeted.
-    ASSERT_EQ(2, analyzer.getBranches().count);
+    ASSERT_EQ(2, analyzer.getBranches().size());
     ASSERT_EQ(TypeRange(0, 1), *analyzer.getRange(1, 2));
 }
 
@@ -516,10 +507,10 @@ TEST(Analyzer, Lt_SingleBranch_Consts) {
 
     print(analyzer);
     //expected - branch is not created
-    //ASSERT_EQ(1, analyzer.getBranches().count);
+    //ASSERT_EQ(1, analyzer.getBranches().size());
     //ASSERT_EQ(TypeRange(0, 1), *analyzer.getRange(0, 2));
     //actual - single branch is craeted.
-    ASSERT_EQ(2, analyzer.getBranches().count);
+    ASSERT_EQ(2, analyzer.getBranches().size());
     ASSERT_EQ(TypeRange(1), *analyzer.getRange(1, 1));
 
 }
@@ -561,7 +552,7 @@ TEST(Analyzer, UnaryMinus) {
 
     print(analyzer);
 
-    ASSERT_EQ(3, analyzer.getBranches().count);
+    ASSERT_EQ(3, analyzer.getBranches().size());
     ASSERT_EQ(TypeRange(-1, -0.5, INCLUDE_LEFT), *analyzer.getRange(1, 2));
     ASSERT_EQ(TypeRange(0.5, 1, INCLUDE_RIGHT), *analyzer.getRange(1, 1));
 

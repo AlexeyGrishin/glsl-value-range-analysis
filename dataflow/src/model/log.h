@@ -1,5 +1,5 @@
 #pragma once
-//#define NOLOG
+#define NOLOG
 
 #ifdef TEST
   #include "stdio.h"

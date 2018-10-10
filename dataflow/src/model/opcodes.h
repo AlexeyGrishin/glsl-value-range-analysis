@@ -41,4 +41,4 @@ enum OpCode {
     _endwatch_op = 38,
     _copy_op = 39
 };
-#define MAX_OPS 40
+constexpr unsigned int MAX_OPS = 40;

@@ -1,22 +1,21 @@
 #include "analisys_context.h"
 #include "ops.h"
 #include "log.h"
+#include <memory>
 
 AnalisysContext::AnalisysContext() 
-    : maxCreatedId(0), nextBranchId(1), warningsCount(0)
+    : maxCreatedId(0)
 {
-    for (int i = 0; i < MAX_VARIABLES; i++) variables[i] = NULL;
-    for (int i = 0; i < MAX_BRANCHES; i++) branches[i] = NULL;
-    for (int i = 0; i < MAX_WARNINGS; i++) warnings[i] = NULL;
-    branches[MAIN_BRANCH] = new Branch(MAIN_BRANCH, MAIN_BRANCH, 0, 0);
+    branches.push_back(std::make_unique<Branch>(MAIN_BRANCH, MAIN_BRANCH, 0, 0));
 }
 
 void AnalisysContext::createVariable(BranchId branchId, CmdId cmdId, VarId id, const TypeRange& range)
 {
-    if (variables[id] == NULL) {
-        variables[id] = new Variable(MAIN_BRANCH, cmdId, range);
+    auto varIt = variables.find(id);
+    if (varIt == variables.end()) {
+        varIt = variables.emplace(id, std::make_unique<Variable>(MAIN_BRANCH, cmdId, range)).first;
     }
-    variables[id]->initBranch(branchId, MAIN_BRANCH);
+    varIt->second->initBranch(branchId, MAIN_BRANCH);
     if (id >= maxCreatedId) maxCreatedId = id+1;
 }
 
@@ -25,49 +24,44 @@ void AnalisysContext::forgetVariable(VarId id)
     getVariable(id).forget();
 }
 
-Variable& AnalisysContext::getVariable(VarId id) const
+Variable& AnalisysContext::getVariable(VarId id)
 {
-    return *variables[id];
+    return *variables.at(id);
 } 
 
-Branch* AnalisysContext::getFirstBranch() const
+const Variable& AnalisysContext::getVariable(VarId id) const
 {
-    for (unsigned int i = 0; i < nextBranchId; i++) {
-        if (branches[i] != NULL && branches[i]->active) return branches[i];
+    return *variables.at(id);
+} 
+
+std::vector<const Branch*> AnalisysContext::getActiveBranches() const
+{
+    std::vector<const Branch*> output;
+    for (auto& bptr: branches) {
+        if (bptr->active) {
+            output.push_back(bptr.get());
+        }
     }
-    return NULL;
+    return output;
 }
 
-BranchId AnalisysContext::getLastBranchId() const
-{
-    return nextBranchId-1;
-}
-
-Branch* AnalisysContext::getNextBranch(Branch* branch) const
-{
-    for (unsigned int i = branch->id+1; i < nextBranchId; i++) {
-        if (branches[i] != NULL && branches[i]->active) return branches[i];
-    }
-    return NULL;    
-}
 
 Branch* AnalisysContext::getBranch(BranchId id) const
 {
-    return branches[id];
+    return branches[id].get();
 }
 
 
 BranchId AnalisysContext::createBranch(BranchId parentId, CmdId cmdId, VarId varId, const TypeRange& range)
 {
-    BranchId id = nextBranchId++;
-    Branch* branch = new Branch(id, parentId, cmdId, varId);
-    branches[id] = branch;
-    for (unsigned int i = 0; i < maxCreatedId; i++) {
-        Variable* variable = variables[i];
-        if (variable != NULL && variable->isActive()) { //todo: issue 1
+    BranchId id = branches.size();
+    branches.push_back(std::make_unique<Branch>(id, parentId, cmdId, varId));
+    for (auto &it: variables) {
+        auto &variable = it.second;
+        if (variable->isActive()) { //todo: issue 1
             variable->initBranch(id, parentId);
-            if (i == varId) {
-                variable->changeRange(id, cmdId, range, TR_Branch, NULL);
+            if (it.first == varId) {
+                variable->changeRange(id, cmdId, range, TR_Branch, nullptr);
             }
         }
     }
@@ -80,7 +74,7 @@ BranchId AnalisysContext::createBranch(BranchId parentId, CmdId cmdId, VarId var
 
 void AnalisysContext::populateChanges(CmdId cmdId, BranchId branchId, BranchId parentBranchId, VarId varId, const TypeRange& changedRange)
 {
-    const Variable* lastUpdatedVar = variables[varId];
+    auto &lastUpdatedVar = variables.at(varId);
     //todo: issue 1: so here we assume that variable has record for parentBranchId and it points to last change
     //even it occured in prev branch. BUT variable could be already inactive (after _forget), so in createBranch
     //it is ignored and record for new branch is not created. So there are options: 
@@ -88,99 +82,63 @@ void AnalisysContext::populateChanges(CmdId cmdId, BranchId branchId, BranchId p
     // 2. update inactive if they are dependent
     // 3. ... keep as is, because if var is inactive - it is not used later. We may skip updating it's range  
     const TypeRangeChange* change = lastUpdatedVar->getLastChangeForBranch(parentBranchId);
-    if (change != NULL && change->restore != NULL)
+    if (change != nullptr && change->restore != nullptr)
     {
-        RestoreRange* restorer = change->restore;
-        Variable* dep = variables[restorer->getDependent()];
+        auto &restorer = change->restore;
+        auto &dep = variables.at(restorer->getDependent());
         const TypeRangeChange* depChange = dep->getLastChangeForBranch(parentBranchId);
-        if (depChange != NULL && depChange->cmdId < restorer->getChangedAt()) {
+        if (depChange != nullptr && depChange->cmdId < restorer->getChangedAt()) {
             const TypeRange& newRange = restorer->restore(*(dep->getRange(parentBranchId)), changedRange);
-            dep->changeRange(branchId, cmdId, newRange, TR_BackPropagation, NULL);
+            dep->changeRange(branchId, cmdId, newRange, TR_BackPropagation, nullptr);
             //todo: maybe here I need to use not original branchId/parentBranchId?
             populateChanges(cmdId, branchId, parentBranchId, restorer->getDependent(), newRange);
         
         }
     }
-    
 }
 
-void AnalisysContext::addWarning(Command* command, BranchId branchId, VarId variable, unsigned int argNr, TypeRange expected, TypeRange actual)
+void AnalisysContext::addWarning(const Command* command, BranchId branchId, VarId variable, unsigned int argNr, TypeRange expected, TypeRange actual)
 {
-    Warning* w = new Warning();
-    w->cmdId = command->cmdId;
-    w->call = command->opCode;
-    w->varId = variable;
-    w->branchId = branchId;
-    w->argumentNr = argNr;
-    w->expectedRange = expected;
-    w->actualRange = actual;
-    warnings[warningsCount++] = w;
+    Warning w = {branchId, command->cmdId, command->opCode, argNr, variable, expected, actual};
+    warnings.push_back(w);
 }
 
-Array<Warning> AnalisysContext::getWarnings() const
+const std::vector<Warning> AnalisysContext::getWarnings() const
 {
-    Array<Warning> array(warningsCount);
-    for (unsigned int i = 0; i < warningsCount; i++) {
-        array.items[i] = *warnings[i];
+    return warnings;
+}
+
+const std::vector<Branch> AnalisysContext::getBranches() const
+{
+    std::vector<Branch> out;
+    for (auto &bptr: branches) {
+        out.push_back(*(bptr.get()));
     }
-    return array;
+    return out;
 }
 
-Array<Branch> AnalisysContext::getBranches() const
+const std::vector<VariableChange> AnalisysContext::getChanges() const
 {
-    Array<Branch> array(nextBranchId);
-    for (unsigned int i = 0; i < nextBranchId; i++) {
-        array.items[i] = *branches[i];
-    }
-    return array;
-}
-
-Array<VariableChange> AnalisysContext::getChanges() const
-{
-    unsigned int total = 0;
-    CmdId maxCmdId = 0;
-    for (unsigned int i = 0; i < maxCreatedId; i++) {
-        Variable* variable = variables[i];
-        if (variable != NULL) {
-            total += variable->getChangesCount();
-            CmdId cmdId = variable->getChange(variable->getChangesCount()-1).cmdId;
-            if (cmdId > maxCmdId) {
-                maxCmdId = cmdId;
-            }
+    std::vector<VariableChange> array;
+    for (auto& it: variables) {
+        auto& variable = it.second;
+        auto changes = variable->getChanges();
+        for (auto& change: changes) {
+            VariableChange outChange = {it.first, change->branchId, change->cmdId, change->newRange, change->reason, change->restore.get() != nullptr};
+            array.push_back(outChange);
         }
     }
-    Array<VariableChange> array(total);
-    int ai = 0;
-    for (CmdId cmdId = 0; cmdId <= maxCmdId; cmdId++) {
-        for (unsigned int i = 0; i < maxCreatedId; i++) {
-            Variable* variable = variables[i];
-            if (variable != NULL) {
-                for (unsigned int ci = 0; ci < variable->getChangesCount(); ci++) {
-                    const TypeRangeChange& change = variable->getChange(ci);
-                    if (change.cmdId == cmdId) {
-                        VariableChange& outChange = array.items[ai];
-                        outChange.varId = i;
-                        outChange.branchId = change.branchId;
-                        outChange.cmdId = change.cmdId;
-                        outChange.newRange = change.newRange;
-                        outChange.revertable = change.restore != NULL;
-                        outChange.reason = change.reason;
-                        ai++;
-                    }
-                }
-            }
-        }    
-    }
+    std::sort(array.begin(), array.end(), [](VariableChange& v1, VariableChange& v2) {
+        if (v1.cmdId > v2.cmdId) return false;
+        if (v1.cmdId < v2.cmdId) return true;
+        return v1.varId < v2.varId;
+    });
+    
     return array;
-
 }
 
 
 
 AnalisysContext::~AnalisysContext()
 {
-    for (int i = 0; i < MAX_VARIABLES; i++) delete variables[i];
-    for (int i = 0; i < MAX_BRANCHES; i++) delete branches[i];
-    for (int i = 0; i < MAX_WARNINGS; i++) delete warnings[i];
-
 }
