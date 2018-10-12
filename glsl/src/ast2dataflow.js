@@ -18,14 +18,19 @@ const OpsMap = {
     "sin": op(OpCode.sin, firstArg, devecMath),
     "cos": op(OpCode.cos, firstArg, devecMath),
     "atan": op(OpCode.atan, firstArg, devecMath),
+    "acos": op(OpCode.acos, firstArg, devecMath),
+    "asin": op(OpCode.asin, firstArg, devecMath),
     "min": op(OpCode.min, firstArg, devecMath),
     "max": op(OpCode.max, firstArg, devecMath),
     "fract": op(OpCode.fract, firstArg, devecMath),
     "floor": op(OpCode.floor, firstArg, devecMath),
     "power": op(OpCode.power, firstArg, devecMath),
+    "pow": op(OpCode.power, firstArg, devecMath),
     "mix": op(OpCode.mix, firstArg, devecMath),
     "normalize": op(OpCode.normalize, firstArg, devecMath),
-    //todo: dot
+    "dot": op(OpCode.dot, firstArg, devecCommon),
+    "sqrt": op(OpCode.sqrt, firstArg, devecMath),
+    "abs": op(OpCode.abs, firstArg, devecMath),
     //todo: cross
     "unary-": op(OpCode.unary_minus, firstArg, devecMath),
     "<": op(OpCode.lt, "boolean", devecCompare),
@@ -36,10 +41,13 @@ const OpsMap = {
     "||": op(OpCode.or, "boolean", devecCompare),
     "&&": op(OpCode.and, "boolean", devecCompare),
     "texture2D": op(OpCode.texture2D, "vec4", devecCommon),
+    "texture": op(OpCode.texture2D, "vec4", devecCommon), //
     "length": op(OpCode.length, "float", devecCommon),
     "step": op(OpCode.step, secondArg, devecMath),
     "smoothstep": op(OpCode.smoothstep, secondArg, devecMath),
     "clamp": op(OpCode.clamp, firstArg, devecMath),
+    "sqrt": op(OpCode.sqrt, firstArg, devecMath),
+    "cross": op(OpCode.cross, firstArg, devecMath),
 
     "vec4": op(undefined, "vec4", devecVecCtor),
     "vec3": op(undefined, "vec3", devecVecCtor),
@@ -224,7 +232,11 @@ export function convert(ast, map = new VariablesMap()) {
 
     function predictOutType(operator, inTypes) {
         if (isCustomFunction(operator)) {
-            return customFunctions.get(functionId(operator, inTypes)).outType;
+            const fullFnId = functionId(operator, inTypes);
+            const fn = customFunctions.get(fullFnId);
+            if (fn) return fn.outType;
+            console.error("Cannot find function", operator, "->", fullFnId, customFunctions);
+            throw new Error("Cannot find function " + operator);
         } else {
             return predictOutBuiltinType(operator, inTypes);
         }
@@ -240,7 +252,7 @@ export function convert(ast, map = new VariablesMap()) {
             return newName;
         }
 
-        for (let call of functionCallStack.reverse()) {
+        for (let call of functionCallStack.slice().reverse()) {
             if (call.renamedVars.has(name)) {
                 return call.renamedVars.get(name);
             }
@@ -303,17 +315,35 @@ export function convert(ast, map = new VariablesMap()) {
         return varPtr(variable);
     }
 
+    function dot(node) {
+        let argLeftPtr = process(node.children[0]);
+        let part = node.children[1].token.data;
+        let varType = ["float", "vec2", "vec3", "vec4"][part.length-1];
+        let variable = map.addTempVariable(varType);
+        //todo: optimize, just add part to last op
+        out.push({op: "=", out: [varPtr(variable)], args: [varPtr(argLeftPtr, part)], line: node.token.line});
+        return varPtr(variable);
+    }
+
+    function arrayItem(node) {
+        //todo: for now - just recognize it as variable with strange name
+        let name = node.children[0].token.data;
+        let idx = node.children[1].token.data;
+        let fullName = name + "[" + idx + "]";
+        fullName = getActualVariableName(fullName);
+        let variable = map.getVariable(fullName);
+        if (!variable) throw new Error("Arrays not supported - array items shall be pre-defined");
+        return varPtr(variable);
+    }
+
     //returns variable id
     function operator(node) {
         let operator = node.token.data;
+        if (operator === '[') {
+            return arrayItem(node);
+        }
         if (operator === '.') {
-            let argLeftPtr = process(node.children[0]);
-            let part = node.children[1].token.data;
-            let varType = ["float", "vec2", "vec3", "vec4"][part.length-1];
-            let variable = map.addTempVariable(varType);
-            //todo: optimize, just add part to last op
-            out.push({op: "=", out: [varPtr(variable)], args: [varPtr(argLeftPtr, part)], line: node.token.line});
-            return varPtr(variable);
+            return dot(node);
         }
         let argVars = node.children.map(process);
         let variable = map.addTempVariable(predictOutType(operator, argVars.map(vptr => map.getById(vptr).type)));
@@ -321,6 +351,7 @@ export function convert(ast, map = new VariablesMap()) {
         return varPtr(variable);
     }
 
+    //todo: comma-separated variables
     function declvar(node) {
         let c = node.children;
         let decllist = c[c.length-1];
@@ -345,13 +376,16 @@ export function convert(ast, map = new VariablesMap()) {
             let expr = decllist.children[1];
             let inId = process(expr);
             //special case
-            if (map.isConst(inId)) {
+            if (map.isConst(inId) || !map.isTemp(inId)) {
                 //no previous op
                 out.push({op: "=", args: [inId], out: [varPtr(variable)]});
                 map.copyRange(variable.id, inId);
             } else {
                 let prevOp = out.pop();
-                if (prevOp.out[0].id !== inId.id) throw new Error("wrong");
+                if (prevOp.out[0].id !== inId.id) {
+                    console.error("Strange, expected that last op will coresspond the id", inId, " last op = ", prevOp);
+                    throw new Error("wrong");
+                }
                 prevOp.out = [varPtr(variable.id)];
                 out.push(prevOp);
             }
@@ -387,7 +421,8 @@ export function convert(ast, map = new VariablesMap()) {
             process(stmtList);    
         } else {
             let declArgs = fn.children[1].children;
-            let inTypes = declArgs.map(decl => decl.token.data);
+            console.log(declArgs);
+            let inTypes = declArgs.map(decl => decl.children.filter(c => c.type === "keyword").pop().token.data);
             let customFn = {
                 node,
                 outType,
@@ -583,17 +618,21 @@ export function convert(ast, map = new VariablesMap()) {
         return operator(fakeNode);
     }
 
+    function createConst(val, type = 'float') {
+        variable = map.getConst(val);
+        if (!variable) {
+            variable = map.addConst(val, type);
+        }
+        return varPtr(variable);
+    }
+
     function process(node) {
         let variable;
         switch (node.type) {
             case "expr":
                 return process(node.children[0]);
             case "literal":
-                variable = map.getConst(node.token.data);
-                if (!variable) {
-                    variable = map.addConst(node.token.data, node.token.type);
-                }
-                return varPtr(variable);
+                return createConst(node.token.data, node.token.type);
             case "ident":
                 variable = map.getVariable(getActualVariableName(node.token.data));
                 if (variable) return varPtr(variable);
@@ -625,6 +664,10 @@ export function convert(ast, map = new VariablesMap()) {
                 return forloop(node);
             case "break":
                 return breakexpr(node);
+            case "keyword":
+                if (node.token.data === 'false') return createConst("0");
+                if (node.token.data === 'true') return createConst("1");
+                break;
 
         }
         console.warn("unknown node type: " + node.type, node);
@@ -771,7 +814,6 @@ export function devectorize(ops, map) {
                 components.push(newVariable);
                 newVariable.isTemp = variable.isTemp;
             }
-            console.log('devectorize', variable.type, variable.name, components);
             map.rename(variable, variable.name + "." + Components.main[0]);
             variable.type = "float";
             variable._devectorized = components.map(v => varPtr(v));

@@ -23,6 +23,8 @@ client::Object*  createRange(const TypeRange& range) {
     return client::createRange(range.left, range.right, range.flag);
 }
 
+//todo: code style: use same (brackets, spacing...)
+
 class [[cheerp::genericjs]] [[cheerp::jsexport]] DataFlowApi {
 private:
     DataFlowAnalyzer* analyzer;

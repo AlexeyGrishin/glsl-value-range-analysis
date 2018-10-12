@@ -22,6 +22,11 @@ namespace RangeOps {
                const TypeRange& arg1, const TypeRange& arg2, const TypeRange& arg3,
                const TypeRange& arg4, const TypeRange& arg5, const TypeRange& arg6
     );
+    TypeRange atan(const TypeRange& arg1);
+    TypeRange asin(const TypeRange& arg1);
+    TypeRange acos(const TypeRange& arg1);
+
+    TypeRange sqrt(const TypeRange& arg1);
 
     //following methods return invalid range if edge not included in input
     TypeRange getLeftIncluding(const TypeRange& input, double edge);

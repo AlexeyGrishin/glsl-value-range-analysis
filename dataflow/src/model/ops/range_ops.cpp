@@ -5,6 +5,8 @@
 #include "../defs.h"
 #include <algorithm>
 
+double pi() { return 4*std::atan(1); } //2k18.. no const for PI
+
 TypeRange RangeOps::sin(const TypeRange& input)
 {
     //todo: calc
@@ -127,6 +129,28 @@ TypeRange RangeOps::abs(const TypeRange& arg1)
     return TypeRange(minAbs, maxAbs);
 }
 
+TypeRange RangeOps::atan(const TypeRange& arg1)
+{
+    return TypeRange(-pi(), pi());
+}
+
+TypeRange RangeOps::asin(const TypeRange& arg1)
+{
+    return TypeRange(-pi()/2, pi()/2);
+}
+
+TypeRange RangeOps::acos(const TypeRange& arg1)
+{
+    return TypeRange(0, pi());
+}
+
+
+TypeRange RangeOps::sqrt(const TypeRange& arg1)
+{
+    TypeRange onlyPositive = RangeOps::getRightIncluding(arg1, 0);
+    if (!onlyPositive.isValid()) return InvalidRange;
+    return TypeRange(std::sqrt(onlyPositive.left), std::sqrt(onlyPositive.right), onlyPositive.flag);
+}
 
 TypeRange RangeOps::getLeftIncluding(const TypeRange& input, double edge)
 {

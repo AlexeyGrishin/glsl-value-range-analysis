@@ -326,6 +326,19 @@ OPERATION(PowOp, power_op, {
     APPLY_VEC4_VEC4_CTX(validatePower)
 });
 
+void validateSqrt(LocalContext& ctx, unsigned int out, unsigned int arg1, unsigned int ignore) {
+    if (!ctx.isDefined(out)) return;
+    const TypeRange& input = ctx.get(arg1);
+    if (input.left < 0) {
+        ctx.addWarning(arg1, TypeRange(0, INFINITY, INCLUDE_LEFT));
+    }
+    ctx.set(out, RangeOps::sqrt(input));
+}
+
+OPERATION(SqrtOp, sqrt_op, {
+    APPLY_VEC4_VEC4_CTX(validateSqrt)
+});
+
 OPERATION(ClampOp, clamp_op, {
     //todo: support all cases. for now - only vec4 clamp(vec4, float min, float max)
     //4 out, 4 arg1, 1 arg2, 1 arg3
@@ -340,6 +353,9 @@ OPERATION(FloorOp, floor_op, {
 });
 OPERATION(FractOp, fract_op, {
     APPLY_VEC4(RangeOps::fract)
+});
+OPERATION(AbsOp, abs_op, {
+    APPLY_VEC4(RangeOps::abs)
 });
 
 
@@ -425,6 +441,48 @@ OPERATION(CopyOp, _copy_op, {
     ctx.set(0, ctx.get(1));
 });
 
+void atan(LocalContext& ctx, unsigned int out, unsigned int arg) {
+    if (!ctx.isDefined(out)) return;
+    const TypeRange& input = ctx.get(arg);
+    if (input.isSingle() && input.includes(0)) {
+        //ctx.addWarning(arg, ); //whoops... how to report "not a zero?"
+        return;
+    }
+    ctx.set(out, RangeOps::atan(input));
+}
+
+OPERATION(AtanOp, atan_op, {
+    APPLY_VEC4_CTX(atan);
+});
+
+void asin(LocalContext& ctx, unsigned int out, unsigned int arg) {
+    if (!ctx.isDefined(out)) return;
+    const TypeRange& input = ctx.get(arg);
+    if (input.left < -1 || input.right > 1) {
+        ctx.addWarning(arg, TypeRange(-1, 1));
+        return;
+    }
+    ctx.set(out, RangeOps::asin(input));
+}
+
+OPERATION(AsinOp, asin_op, {
+    APPLY_VEC4_CTX(asin);
+});
+
+void acos(LocalContext& ctx, unsigned int out, unsigned int arg) {
+    if (!ctx.isDefined(out)) return;
+    const TypeRange& input = ctx.get(arg);
+    if (input.left < -1 || input.right > 1) {
+        ctx.addWarning(arg, TypeRange(-1, 1));
+        return;
+    }
+    ctx.set(out, RangeOps::acos(input));
+}
+
+OPERATION(AcosOp, acos_op, {
+    APPLY_VEC4_CTX(acos);
+});
+
 REGISTER_START(registerBuiltinOps)
 REGISTER(PlusOp)
 REGISTER(MinusOp)
@@ -432,6 +490,9 @@ REGISTER(MulOp)
 REGISTER(DivOp)
 REGISTER(SinOp)
 REGISTER(CosOp)
+REGISTER(AcosOp)
+REGISTER(AsinOp)
+REGISTER(AtanOp)
 REGISTER(FloorOp)
 REGISTER(FractOp)
 REGISTER(TextureOp)
@@ -449,6 +510,7 @@ REGISTER(PowOp)
 REGISTER(ClampOp)
 REGISTER(LengthOp)
 REGISTER(MixOp)
+REGISTER(AbsOp)
 REGISTER(NormalizeOp)
 REGISTER(UnaryMinusOp)
 REGISTER(DotOp)

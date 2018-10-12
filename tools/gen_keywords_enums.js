@@ -3,13 +3,13 @@ let path = require('path')
 
 const OpCodes = `
     plus minus mul div
-    sin cos atan
+    sin cos atan acos asin
     texture2D
     step
     length
     lt gt lte gte eq
     assign
-    max min
+    max min sqrt abs
     fract power mix dot clamp normalize smoothstep floor cross unary_minus or and
 
     _define
