@@ -24,6 +24,22 @@ void main() {
 `;
 
 var src = `
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    // Normalized pixel coordinates (from 0 to 1)
+    vec2 uv = fragCoord/iResolution.xy;
+
+    // Time varying pixel color
+    //vec3 col = 0.5 + 0.5*cos(iTime+vec3(0,2,4));
+    vec3 col = 0.5 + vec3(0,2,4);
+
+    // Output to screen
+    fragColor = vec4(col,1.0);
+    //fragColor = vec4(1.0);
+}
+`;
+
+var src4 = `
 uniform sampler2D sampler;
 uniform vec2 textureCoord /*0,1*/;
 
@@ -97,7 +113,22 @@ function addCommonVars(map) {
 
 function addShadertoyVars(map) {
     map.addVariable("fragColor", "vec4");
-    map.addVariable("iTime", "float");
+    map.addVariable("iTime", "float", "[0,Infinity)");
+    map.addVariable("iResolution", "vec3", "[0,4000]");
+    map.addVariable("fragCoord", "vec2", "[0,4000]");
+    map.addVariable("iMouse", "vec4", "[0,4000]");
+    map.addVariable("iChannel0", "sampler2D");
+    map.addVariable("iChannel1", "sampler2D");
+    map.addVariable("iChannel2", "sampler2D");
+    map.addVariable("iChannel3", "sampler2D");
+}
+
+function getOutVarId(map) {
+    let outVar = map.getVariable("fragColor"); //shadertoy
+    if (!outVar) {
+        outVar = map.getVariable("gl_FragColor");
+    }
+    return outVar ? varPtr(outVar) : null;
 }
 
 const DEBUG = true;
@@ -106,7 +137,9 @@ function process(src) {
     let tree = ParseTokens(TokenString(src));
     let map = new VariablesMap();
     addCommonVars(map);
-    addShadertoyVars(map);
+    if (src.indexOf("mainImage(") !== -1 && src.indexOf("gl_FragColor") === -1) {
+        addShadertoyVars(map);
+    }
 
     function idToStr(varPtr) {
         if (varPtr.id === 0) return '_';
@@ -119,7 +152,10 @@ function process(src) {
         return `${op.line ? (op.line + ': ') : ''}${op.out.map(idToStr).join(",")} = ${op.op}(${op.args.map(idToStr).join()}${op.range ? (',' + op.range) : ''})`
     }
     let pass1 = convert(tree, map);
-    pass1.push({op: "_output", out: [], args: [varPtr(map.getVariable("gl_FragColor"))]});
+    let outVarId = getOutVarId(map);
+    if (outVarId) {
+        pass1.push({op: "_output", out: [], args: [outVarId]});
+    } //todo: else?
     if (DEBUG) {
         console.group("tree");
         printNode(tree);
@@ -158,10 +194,19 @@ function process(src) {
     let flow = new DataFlowApi();
     flow.init();
     //return;//todo temp
+    if (DEBUG) {
+        console.group("process");
+    }
     for (let op of pass4) {
         //console.log('process', op);
+        console.log('process', op.cmdId);
         let ret = flow.addCommand(op.cmdId, op.opCode, op.args, op.range.left, op.range.right, op.range.flag);
+        console.log(' = ', ret, getErrorMessage(ret));
+        //todo: show error in UI (if any);
         //if (ret) console.log("  ERROR: ", ret);
+    }
+    if (DEBUG) {
+        console.groupEnd();
     }
     let report = [];
     flow.getReport(report);
@@ -177,6 +222,16 @@ function process(src) {
     flow.fini();
 
     return new HumanReport(fixReport(report), map, pass4, src);//{map, report};
+}
+
+function getErrorMessage(ret) {
+    return [
+        "OK",
+        "Unknown error",
+        "Non-existent opCode",
+        "Unknown variable",
+        "Argument absent"
+    ][ret] || "Unknown error";
 }
 
 function fixReport(report) {

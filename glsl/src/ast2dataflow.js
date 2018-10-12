@@ -175,6 +175,11 @@ const SmallOpStruct = {
 };
 
 function noVarPtr() { return varPtr(0); }
+
+function isNoVar(ptr) {
+    return ptr.id === 0;
+}
+
 export function varPtr(varId, part) {
     if (typeof varId === "object") {
         if (varId.part !== undefined) {
@@ -377,6 +382,9 @@ export function convert(ast, map = new VariablesMap()) {
         let stmtList = fn.children[fn.children.length-1];
         if (fnName === 'main') {
             process(stmtList);
+        } else if (fnName === 'mainImage') {
+            //shadertoy case
+            process(stmtList);    
         } else {
             let declArgs = fn.children[1].children;
             let inTypes = declArgs.map(decl => decl.token.data);
@@ -652,7 +660,7 @@ function getPtrComponents(ptr, map) {
         if (ptr.part) throw new Error("part for non-vector?");
         return [ptr];
     }
-    return ptr.part ? (ptr.part.split('').map(c => Components[c])).map(idx => allComponents[idx]) : allComponents;
+    return ptr.part ? (ptr.part.split('').map(c => Components[c])).map(idx => allComponents[idx]) : allComponents.slice();
 }
 
 function devecVecCtor(op, map) {
@@ -706,11 +714,14 @@ function devecMath(op, map) {
         arg2 = arg2.concat(getPtrComponents(op.args[2], map));
     }
     while (outArgs.length < 4) outArgs.push(noVarPtr());
-    while (arg1.length < 4) arg1.push(noVarPtr());
     if (arg2.length > 0) {
-        let isSingle = arg2.length === 1 && arg1isVector;
-        while (arg2.length < 4) arg2.push(isSingle ? arg2[0] : noVarPtr());
+        let vectorPlusSingle = arg2.length === 1 && arg1isVector;
+        let singlePlusVector = arg2.length > 1 && !arg1isVector;
+        while (arg1.length < 4) arg1.push(singlePlusVector ? arg1[0] : noVarPtr());
+        while (arg2.length < 4) arg2.push(vectorPlusSingle ? arg2[0] : noVarPtr());
         arg1 = arg1.concat(arg2);
+    } else {
+        while (arg1.length < 4) arg1.push(noVarPtr());
     }
     return {op: op.op, out: outArgs, args: arg1, range: op.range, line: op.line};
 }
@@ -760,6 +771,7 @@ export function devectorize(ops, map) {
                 components.push(newVariable);
                 newVariable.isTemp = variable.isTemp;
             }
+            console.log('devectorize', variable.type, variable.name, components);
             map.rename(variable, variable.name + "." + Components.main[0]);
             variable.type = "float";
             variable._devectorized = components.map(v => varPtr(v));
