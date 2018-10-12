@@ -25,9 +25,10 @@ public:
     AnalisysContext();
 
     void createVariable(BranchId branchId, CmdId cmdId, VarId id, const TypeRange& range);
-    void forgetVariable(VarId id);
-    Variable& getVariable(VarId id); 
-    const Variable& getVariable(VarId id) const; 
+    const Variable* forgetVariable(VarId id);
+    Variable* getVariable(VarId id); 
+    const TypeRange* getRange(BranchId branchId, VarId varId) const;
+    const Variable* getVariable(VarId id) const; 
     BranchId createBranch(BranchId parentId, CmdId cmdId, VarId variable, const TypeRange& range);
 
     std::vector<const Branch*> getActiveBranches() const;
@@ -87,9 +88,28 @@ private:
     AnalisysContext* ctx;
     BranchId branchId;
     const Command* command;
+    ProcessResult result;
 public:
 
-    LocalContext(AnalisysContext* ctx): ctx(ctx), branchId(0), command(nullptr) {}
+    LocalContext(AnalisysContext* ctx): ctx(ctx), branchId(0), command(nullptr), result(PR_OK) {}
+
+    void start() {
+        result = PR_OK;
+    }
+
+    bool hasErrors() {
+        return result != PR_OK;
+    }
+
+    void onError(ProcessResult error) {
+        if (!hasErrors()) {
+            result = error;
+        }
+    }
+
+    ProcessResult getStatus() {
+        return result;
+    }
 
     void setup(BranchId branchId, const Command* command) {
         this->command = command;
@@ -105,13 +125,27 @@ public:
     }
 
     const TypeRange& get(int argNr) {
-        const TypeRange* out = ctx->getVariable(command->getArgument(argNr)).getRange(branchId);
-        return *out;
+        auto varId = getVarId(argNr);
+        if (varId == UNKNOWN_VAR) {
+            onError(PR_ABSENT_ARGUMENT); 
+            return Zero;
+        }
+        auto var = ctx->getVariable(varId);
+        if (var == nullptr) {
+            onError(PR_UNKNOWN_VAR);
+            return Zero;
+        }
+        return *var->getRange(branchId);
     }
 
     void set(int argNr, const TypeRange& newRange) {
         if (!isDefined(argNr)) return;
-        ctx->getVariable(command->getArgument(argNr)).changeRange(branchId, command->cmdId, newRange, TR_Operation, nullptr);
+        auto var = ctx->getVariable(command->getArgument(argNr));
+        if (var == nullptr) {
+            onError(PR_UNKNOWN_VAR);
+            return;
+        }
+        var->changeRange(branchId, command->cmdId, newRange, TR_Operation, nullptr);
     }
 
     void set(int argNr, const TypeRange& newRange, RestoreRange* restorer, unsigned int depArgNr) {
@@ -120,7 +154,12 @@ public:
             restorer->setDependent(getVarId(depArgNr));
             restorer->setChangedAt(command->cmdId);
         }
-        ctx->getVariable(command->getArgument(argNr)).changeRange(branchId, command->cmdId, newRange, TR_Operation, restorer);
+        auto var = ctx->getVariable(command->getArgument(argNr));
+        if (var == nullptr) {
+            onError(PR_UNKNOWN_VAR);
+            return;
+        }
+        var->changeRange(branchId, command->cmdId, newRange, TR_Operation, restorer);
     }
 
     void set(int argNr, bool bval) {

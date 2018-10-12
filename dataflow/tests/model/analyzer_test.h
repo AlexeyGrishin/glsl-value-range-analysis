@@ -5,6 +5,7 @@
 
 #define ADDARG4(cmd,arg) cmd.addArgument(arg);cmd.addArgument(0);cmd.addArgument(0);cmd.addArgument(0);
 
+#define ASSERT_PROCESS(expectedCode, command) ASSERT_EQ(expectedCode, analyzer.processCommand(&command));
 
 void print(DataFlowAnalyzer& analyzer) {
     auto warnings = analyzer.getWarnings();
@@ -487,6 +488,38 @@ TEST(Analyzer, Lt_AlwaysSingleBranch) {
     ASSERT_EQ(TypeRange(0, 1), *analyzer.getRange(1, 2));
 }
 
+TEST(Analyzer, Eq) {
+    DataFlowAnalyzer analyzer;
+    //const1 = 0.8
+    Command cmdDefine1(1, _define_op);
+    cmdDefine1.addArgument(1);
+    cmdDefine1.setRange(TypeRange(0.8));
+    //var2 = [0,1];
+    Command cmdDefine2(2, _define_op);
+    cmdDefine2.addArgument(2);
+    cmdDefine2.setRange(TypeRange(0, 1));
+    //var3 = var2 == var1
+    Command cmdDefine3(3, _define_op);
+    cmdDefine3.addArgument(3);
+
+    Command cmdEq4(4, eq_op);
+    cmdEq4.addArgument(3);
+    ADDARG4(cmdEq4, 2);
+    ADDARG4(cmdEq4, 1);
+
+    analyzer.processCommand(&cmdDefine1);
+    analyzer.processCommand(&cmdDefine2);
+    analyzer.processCommand(&cmdDefine3);
+    analyzer.processCommand(&cmdEq4);
+
+    print(analyzer);
+    ASSERT_EQ(4, analyzer.getBranches().size());
+    ASSERT_EQ(TypeRange(0, 0.8, INCLUDE_LEFT), *analyzer.getRange(1, 2));
+    ASSERT_EQ(TypeRange(0.8), *analyzer.getRange(2, 2));
+    ASSERT_EQ(TypeRange(0.8, 1, INCLUDE_RIGHT), *analyzer.getRange(3, 2));
+
+}
+
 TEST(Analyzer, Lt_SingleBranch_Consts) {
     DataFlowAnalyzer analyzer;
     //var1 = 1
@@ -558,4 +591,50 @@ TEST(Analyzer, UnaryMinus) {
 
     ASSERT_EQ(TypeRange(-0.5, 0), *analyzer.getRange(2, 2));
     ASSERT_EQ(TypeRange(0, 0.5), *analyzer.getRange(2, 1));
+}
+
+TEST(Analyzer, Errors) {
+
+    DataFlowAnalyzer analyzer;
+
+    Command cmdDefine1(1, _define_op);
+    cmdDefine1.addArgument(1);
+
+    Command cmdDefine2(2, _define_op);
+    cmdDefine2.addArgument(2);
+    
+    Command cmdPlus_unknownOutVar3(3, plus_op);
+    ADDARG4(cmdPlus_unknownOutVar3, 3);
+    ADDARG4(cmdPlus_unknownOutVar3, 1);
+    ADDARG4(cmdPlus_unknownOutVar3, 2);
+
+    Command cmdPlus_unknownInVarFirst4(4, plus_op);
+    ADDARG4(cmdPlus_unknownInVarFirst4, 2);
+    ADDARG4(cmdPlus_unknownInVarFirst4, 3);
+    ADDARG4(cmdPlus_unknownInVarFirst4, 2);
+
+    Command cmdPlus_unknownInVarSecond5(5, plus_op);
+    ADDARG4(cmdPlus_unknownInVarSecond5, 2);
+    ADDARG4(cmdPlus_unknownInVarSecond5, 3);
+    ADDARG4(cmdPlus_unknownInVarSecond5, 2);
+
+    Command cmdPlus_moreOutVars6(6, plus_op);
+    cmdPlus_moreOutVars6.addArgument(1);
+    cmdPlus_moreOutVars6.addArgument(1);
+    cmdPlus_moreOutVars6.addArgument(0);
+    cmdPlus_moreOutVars6.addArgument(0);
+    ADDARG4(cmdPlus_moreOutVars6, 2);
+    ADDARG4(cmdPlus_moreOutVars6, 2);
+
+    Command unknownCommand7(7, (OpCode)999);
+
+    ASSERT_PROCESS(PR_OK, cmdDefine1);
+    ASSERT_PROCESS(PR_OK, cmdDefine2);
+    ASSERT_PROCESS(PR_UNKNOWN_VAR, cmdPlus_unknownOutVar3);
+    ASSERT_PROCESS(PR_UNKNOWN_VAR, cmdPlus_unknownInVarFirst4);
+    ASSERT_PROCESS(PR_UNKNOWN_VAR, cmdPlus_unknownInVarSecond5);
+    ASSERT_PROCESS(PR_ABSENT_ARGUMENT, cmdPlus_moreOutVars6);
+    ASSERT_PROCESS(PR_UNKNOWN_OP, unknownCommand7);
+
+
 }

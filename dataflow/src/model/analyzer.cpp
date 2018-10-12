@@ -15,7 +15,8 @@ DataFlowAnalyzer::DataFlowAnalyzer()
 ProcessResult DataFlowAnalyzer::processCommand(Command* command)
 {
     auto branches = context.getActiveBranches();
-    ProcessResult res = PR_OK;
+    local.start();
+
     for (auto branch: branches) {
         local.setup(branch->id, command);
         switch (command->opCode)
@@ -37,7 +38,8 @@ ProcessResult DataFlowAnalyzer::processCommand(Command* command)
                     if (!branch->skip) ops.createBranches(command->opCode, local);
                 } else {
                     //printf("%d = NULL\n", command->opCode);
-                    res = PR_UNKNOWN_OP;
+                    local.onError(PR_UNKNOWN_OP);
+                    return local.getStatus();
                 }
                 break;
         }
@@ -73,13 +75,13 @@ ProcessResult DataFlowAnalyzer::processCommand(Command* command)
                 break;
         }
     }
-    return res;
+    return local.getStatus();
 
 }
 
 const TypeRange* DataFlowAnalyzer::getRange(BranchId branchId, VarId varId) const
 {
-    return context.getVariable(varId).getRange(branchId);
+    return context.getRange(branchId, varId);
 }
 
 const std::vector<Warning> DataFlowAnalyzer::getWarnings() const

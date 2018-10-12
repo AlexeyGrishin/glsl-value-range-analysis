@@ -4,13 +4,6 @@
 #include "analisys_context.h"
 #include "ops.h"
 
-enum ProcessResult {
-    PR_OK = 0,
-    PR_ERROR = 1,
-
-    PR_UNKNOWN_OP = 2
-};
-
 class DataFlowAnalyzer 
 {
 private:

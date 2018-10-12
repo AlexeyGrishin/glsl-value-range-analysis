@@ -131,6 +131,36 @@ OPERATION(OutputOp, _output_op, {
     }
 });
 
+//todo: also only floats
+BRANCH_OPERATION(EqOp, eq_op, {
+    //if range == const
+        //3 branches - when eq, when left, when right
+    TypeRange left = ctx.get(1);
+    TypeRange right = ctx.get(5);
+    if (right.isSingle()) {
+        ctx.set(0, left.includes(right.left));
+    }
+    else if (left.isSingle()) {
+        ctx.set(0, right.includes(left.left));
+    }
+}, {
+    TypeRange left = ctx.get(1);
+    TypeRange right = ctx.get(5);
+    if (right.isSingle()) {
+        ctx.createBranch(1, RangeOps::getLeftExcluding(left, right.left));
+        ctx.createBranch(1, RangeOps::getIncluded(left, right.left));
+        ctx.createBranch(1, RangeOps::getRightExcluding(left, right.left));
+        return true;
+    }
+    else if (left.isSingle()) {
+        ctx.createBranch(5, RangeOps::getLeftExcluding(right, left.left));
+        ctx.createBranch(5, RangeOps::getIncluded(right, left.left));
+        ctx.createBranch(5, RangeOps::getRightExcluding(right, left.left));
+        return true;
+    }
+    return false;
+})
+
 BRANCH_OPERATION(LtOp, lt_op, {
     //0 - out, float
     //1,2,3,4 - in1
@@ -162,6 +192,36 @@ BRANCH_OPERATION(LtOp, lt_op, {
     //todo: support 2 ranges
 });
 
+
+BRANCH_OPERATION(LteOp, lte_op, {
+    //0 - out, float
+    //todo: for now - only floats. Imma lazy 
+    TypeRange left = ctx.get(1);
+    TypeRange right = ctx.get(5);
+    if (right.isSingle()) {
+        ctx.set(0, left.includes(right.left));
+    }
+    else if (left.isSingle()) {
+        ctx.set(0, right.includes(left.left));
+    }
+}, {
+    TypeRange left = ctx.get(1);
+    TypeRange right = ctx.get(5);
+    if (right.isSingle()) {
+        ctx.createBranch(1, RangeOps::getLeftIncluding(left, right.left));
+        ctx.createBranch(1, RangeOps::getRightExcluding(left, right.left));
+        return true;
+    }
+    else if (left.isSingle()) {
+        ctx.createBranch(5, RangeOps::getLeftIncluding(right, left.left));
+        ctx.createBranch(5, RangeOps::getRightExcluding(right, left.left));
+        return true;
+    }
+    return false;
+    //todo: support 2 ranges
+});
+
+
 void gte(LocalContext& ctx, unsigned int out, unsigned int arg1, unsigned int arg2) {
     if (!ctx.isDefined(out)) return;
     TypeRange left = ctx.get(arg1);
@@ -173,6 +233,25 @@ void gte(LocalContext& ctx, unsigned int out, unsigned int arg1, unsigned int ar
         ctx.set(out, right.includes(left.left));
     }
 }
+
+BRANCH_OPERATION(GteOp, gte_op, {
+    //todo: for now - only floats. Imma lazy 
+    gte(ctx, 0, 1, 5);
+}, {
+    TypeRange left = ctx.get(1);
+    TypeRange right = ctx.get(5);
+    if (right.isSingle()) {
+        ctx.createBranch(1, RangeOps::getLeftExcluding(left, right.left));
+        ctx.createBranch(1, RangeOps::getRightIncluding(left, right.left));
+        return true;
+    }
+    else if (left.isSingle()) {
+        ctx.createBranch(5, RangeOps::getLeftExcluding(right, left.left));
+        ctx.createBranch(5, RangeOps::getRightIncluding(right, left.left));
+        return true;
+    }
+    return false;
+});
 
 BRANCH_OPERATION(StepOp, step_op, {
     //0,1,2,3
@@ -316,6 +395,22 @@ OPERATION(DotOp, dot_op, {
     ctx.set(0, RangeOps::dot(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8));
 });
 
+OPERATION(CrossOp, cross_op, {
+    TypeRange out1;
+    TypeRange out2;
+    TypeRange out3;
+    const TypeRange& arg1 = ctx.get(4);
+    const TypeRange& arg2 = ctx.get(5);
+    const TypeRange& arg3 = ctx.get(6);
+    const TypeRange& arg4 = ctx.get(8);
+    const TypeRange& arg5 = ctx.get(9);
+    const TypeRange& arg6 = ctx.get(10);
+    RangeOps::cross(out1, out2, out3, arg1, arg2, arg3, arg4, arg5, arg6);
+    ctx.set(0, out1);
+    ctx.set(1, out2);
+    ctx.set(2, out3);
+});
+
 //todo: vec2/vec3/vec4
 //todo: tests
 OPERATION(OrOp, or_op, {
@@ -344,6 +439,9 @@ REGISTER(AssignOp)
 REGISTER(OutputOp)
 REGISTER(LtOp)
 REGISTER(GtOp)
+REGISTER(LteOp)
+REGISTER(GteOp)
+REGISTER(EqOp)
 REGISTER(StepOp)
 REGISTER(MaxOp)
 REGISTER(MinOp)
@@ -354,6 +452,7 @@ REGISTER(MixOp)
 REGISTER(NormalizeOp)
 REGISTER(UnaryMinusOp)
 REGISTER(DotOp)
+REGISTER(CrossOp)
 REGISTER(OrOp)
 REGISTER(AndOp)
 REGISTER(CopyOp)

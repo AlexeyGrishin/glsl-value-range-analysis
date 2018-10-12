@@ -94,6 +94,15 @@ TEST(Range, Sum_LeftInfinite) {
        ASSERT_DOUBLE_EQ(-INFINITY, sum.left);
        ASSERT_DOUBLE_EQ(7, sum.right);
 }
+TEST(Range, Substract) {
+    TypeRange r1(1, 3);
+    TypeRange r2(1, 3);
+    TypeRange diff(r1 - r2);
+    ASSERT_DOUBLE_EQ(-2, diff.left);
+    ASSERT_DOUBLE_EQ(2, diff.right);
+}
+
+
 TEST(Range, Mul) {
        TypeRange r1(-1, 2);
        TypeRange r2(-10, 3);
@@ -358,4 +367,14 @@ TEST(Range, Boolean) {
     ASSERT_TRUE((bool)(TypeRange(0,1)));
 }
 
-//todo: test for minus(?)
+TEST(RangeOps, Included) {
+    TypeRange r1(1, 2, INCLUDE_LEFT);
+    
+    ASSERT_EQ(TypeRange(1.5), RangeOps::getIncluded(r1, 1.5));
+    ASSERT_EQ(TypeRange(1), RangeOps::getIncluded(r1, 1));
+    ASSERT_EQ(TypeRange(1.9), RangeOps::getIncluded(r1, 1.9));
+
+    ASSERT_FALSE(RangeOps::getIncluded(r1, 2).isValid());
+    ASSERT_FALSE(RangeOps::getIncluded(r1, 3).isValid());
+    ASSERT_FALSE(RangeOps::getIncluded(r1, 0.9).isValid());
+}
