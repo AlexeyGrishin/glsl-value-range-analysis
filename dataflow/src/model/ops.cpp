@@ -18,7 +18,7 @@ void OpsRegistry::add(BaseOp* op)
 
 bool OpsRegistry::isKnown(OpCode code)
 {
-    return (bool)ops[code];
+    return code >= 0 && code < ops.size() && (bool)ops[code];
 }
 
 bool OpsRegistry::createBranches(OpCode code, LocalContext& ctx)

@@ -120,14 +120,14 @@ TypeRange RangeOps::abs(const TypeRange& arg1)
 TypeRange RangeOps::getLeftIncluding(const TypeRange& input, double edge)
 {
     if (edge >= input.right) return input;
-    if (edge < input.left) return TypeRange(1,-1);
+    if (edge < input.left) return InvalidRange;
     return TypeRange(input.left, edge, (RangeFlag)((input.flag & INCLUDE_LEFT) | INCLUDE_RIGHT));
 }
 
 TypeRange RangeOps::getRightIncluding(const TypeRange& input, double edge)
 {
     if (edge <= input.left) return input;
-    if (edge > input.right) return TypeRange(1,-1);
+    if (edge > input.right) return InvalidRange;
 
     return TypeRange(edge, input.right, (RangeFlag)((input.flag & INCLUDE_RIGHT) | INCLUDE_LEFT));
 
@@ -135,7 +135,7 @@ TypeRange RangeOps::getRightIncluding(const TypeRange& input, double edge)
 
 TypeRange RangeOps::getLeftExcluding(const TypeRange& input, double edge)
 {
-    if (edge <= input.left) return TypeRange(1,-1);
+    if (edge <= input.left) return InvalidRange;
     if (edge > input.right) return input;
 
     return TypeRange(input.left, edge, (RangeFlag)(input.flag & INCLUDE_LEFT));
@@ -143,7 +143,7 @@ TypeRange RangeOps::getLeftExcluding(const TypeRange& input, double edge)
 
 TypeRange RangeOps::getRightExcluding(const TypeRange& input, double edge)
 {
-    if (edge >= input.right) return TypeRange(1,-1);
+    if (edge >= input.right) return InvalidRange;
     if (edge < input.left) return input;
 
     return TypeRange(edge, input.right, (RangeFlag)(input.flag & INCLUDE_RIGHT));

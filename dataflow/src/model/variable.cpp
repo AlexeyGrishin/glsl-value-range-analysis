@@ -23,6 +23,7 @@ void Variable::changeRange(BranchId branchId, CmdId cmdId, const TypeRange& rang
 
 void Variable::initBranch(BranchId branchId, BranchId parentBranchId)
 {
+    if (lastBranchChanges.count(branchId)) return;
     auto parentChange = lastBranchChanges.find(parentBranchId);
     if (parentChange != lastBranchChanges.end()) {
         lastBranchChanges[branchId] = parentChange->second;

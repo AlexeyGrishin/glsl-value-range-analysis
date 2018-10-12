@@ -124,7 +124,6 @@
   <ItemGroup>
     <ClInclude Include="tests\all.h" />
     <ClInclude Include="tests\model\analyzer_test.h" />
-    <ClInclude Include="tests\model\RangeTest.h" />
     <ClInclude Include="tests\model\range_test.h" />
   </ItemGroup>
   <ItemGroup>

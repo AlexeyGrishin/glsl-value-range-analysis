@@ -60,7 +60,7 @@ TypeRange TypeRange::operator+(const TypeRange& another) const
 
 TypeRange TypeRange::operator-(const TypeRange& another) const
 {
-    return TypeRange(left - another.left, right - another.right, merge(flag, another.flag));
+    return *this + (-another);
 }
 
 TypeRange TypeRange::operator-() const

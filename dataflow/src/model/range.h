@@ -3,8 +3,6 @@
 #include "defs.h"
 #include "log.h"
 #include <cmath>
-//todo: avoid std, if only string is used. redo with old good char*
-//todo: with -nostdlib it is 13K, with - 500K O_o. better to build without, but will have to not use std::list and other stuff
 
 enum RangeFlag {
     IGNORE = 0xff,
@@ -26,7 +24,7 @@ struct TypeRange {
     TypeRange(RangeFlag flag) : flag(flag), left(0), right(0) {}
     TypeRange(double single) : flag(INCLUDE_BOTH), left(single), right(single) {}
     TypeRange(double left, double right, RangeFlag flag) : flag(flag), left(left), right(right) {}
-    TypeRange(double left, double right) : flag(INCLUDE_BOTH), left(left), right(right) {}
+    constexpr TypeRange(double left, double right) : flag(INCLUDE_BOTH), left(left), right(right) {}
 
     bool isSingle() const;
     bool includes(double n) const;
@@ -67,3 +65,6 @@ struct TypeRange {
     #endif
     
 };
+
+//todo: maybe use TypeRange with IGNORE flag instead of invalid one
+constexpr TypeRange InvalidRange(1, -1);

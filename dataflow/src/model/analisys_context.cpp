@@ -22,19 +22,41 @@ void AnalisysContext::createVariable(BranchId branchId, CmdId cmdId, VarId id, c
     if (id >= maxCreatedId) maxCreatedId = id+1;
 }
 
-void AnalisysContext::forgetVariable(VarId id)
+const Variable* AnalisysContext::forgetVariable(VarId id)
 {
-    getVariable(id).forget();
+    Variable* var = getVariable(id);
+    if (var != nullptr) {
+        var->forget();
+        return var;
+    }
+    return nullptr;
 }
 
-Variable& AnalisysContext::getVariable(VarId id)
+Variable* AnalisysContext::getVariable(VarId id)
 {
-    return *variables.at(id);
+    auto varIt = variables.find(id);
+    if (varIt == std::end(variables)) {
+        return nullptr;
+    }
+    return varIt->second.get();
 } 
 
-const Variable& AnalisysContext::getVariable(VarId id) const
+const TypeRange* AnalisysContext::getRange(BranchId branchId, VarId varId) const
 {
-    return *variables.at(id);
+    auto varIt = variables.find(varId);
+    if (varIt == std::end(variables)) {
+        return nullptr;
+    }
+    return varIt->second->getRange(branchId);
+}
+
+const Variable* AnalisysContext::getVariable(VarId id) const
+{
+    auto varIt = variables.find(id);
+    if (varIt == std::end(variables)) {
+        return nullptr;
+    }
+    return varIt->second.get();
 } 
 
 std::vector<const Branch*> AnalisysContext::getActiveBranches() const

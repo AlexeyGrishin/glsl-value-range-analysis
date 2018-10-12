@@ -94,6 +94,15 @@ TEST(Range, Sum_LeftInfinite) {
        ASSERT_DOUBLE_EQ(-INFINITY, sum.left);
        ASSERT_DOUBLE_EQ(7, sum.right);
 }
+TEST(Range, Substract) {
+    TypeRange r1(1, 3);
+    TypeRange r2(1, 3);
+    TypeRange diff(r1 - r2);
+    ASSERT_DOUBLE_EQ(-2, diff.left);
+    ASSERT_DOUBLE_EQ(2, diff.right);
+}
+
+
 TEST(Range, Mul) {
        TypeRange r1(-1, 2);
        TypeRange r2(-10, 3);
