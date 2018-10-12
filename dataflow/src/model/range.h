@@ -68,3 +68,4 @@ struct TypeRange {
 
 //todo: maybe use TypeRange with IGNORE flag instead of invalid one
 constexpr TypeRange InvalidRange(1, -1);
+constexpr TypeRange Zero(0, 0);

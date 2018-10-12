@@ -367,4 +367,14 @@ TEST(Range, Boolean) {
     ASSERT_TRUE((bool)(TypeRange(0,1)));
 }
 
-//todo: test for minus(?)
+TEST(RangeOps, Included) {
+    TypeRange r1(1, 2, INCLUDE_LEFT);
+    
+    ASSERT_EQ(TypeRange(1.5), RangeOps::getIncluded(r1, 1.5));
+    ASSERT_EQ(TypeRange(1), RangeOps::getIncluded(r1, 1));
+    ASSERT_EQ(TypeRange(1.9), RangeOps::getIncluded(r1, 1.9));
+
+    ASSERT_FALSE(RangeOps::getIncluded(r1, 2).isValid());
+    ASSERT_FALSE(RangeOps::getIncluded(r1, 3).isValid());
+    ASSERT_FALSE(RangeOps::getIncluded(r1, 0.9).isValid());
+}

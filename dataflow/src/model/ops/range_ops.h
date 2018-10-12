@@ -18,9 +18,15 @@ namespace RangeOps {
     TypeRange dot(const TypeRange& arg1, const TypeRange& arg2, const TypeRange& arg3, const TypeRange& arg4,
                   const TypeRange& arg5, const TypeRange& arg6, const TypeRange& arg7, const TypeRange& arg8
     );
+    void cross(TypeRange& out1, TypeRange& out2, TypeRange& out3,
+               const TypeRange& arg1, const TypeRange& arg2, const TypeRange& arg3,
+               const TypeRange& arg4, const TypeRange& arg5, const TypeRange& arg6
+    );
 
+    //following methods return invalid range if edge not included in input
     TypeRange getLeftIncluding(const TypeRange& input, double edge);
     TypeRange getRightIncluding(const TypeRange& input, double edge);
     TypeRange getLeftExcluding(const TypeRange& input, double edge);
     TypeRange getRightExcluding(const TypeRange& input, double edge);
+    TypeRange getIncluded(const TypeRange& input, double edge);
 }

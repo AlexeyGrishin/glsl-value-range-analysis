@@ -128,12 +128,12 @@ public:
         auto varId = getVarId(argNr);
         if (varId == UNKNOWN_VAR) {
             onError(PR_ABSENT_ARGUMENT); 
-            return InvalidRange;
+            return Zero;
         }
         auto var = ctx->getVariable(varId);
         if (var == nullptr) {
             onError(PR_UNKNOWN_VAR);
-            return InvalidRange;
+            return Zero;
         }
         return *var->getRange(branchId);
     }

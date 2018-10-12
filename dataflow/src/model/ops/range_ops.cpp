@@ -77,6 +77,17 @@ TypeRange RangeOps::dot(const TypeRange& arg1, const TypeRange& arg2, const Type
     return arg1*arg5 + arg2*arg6 * arg3*arg7 + arg4*arg8;
 }
 
+void RangeOps::cross(TypeRange& out1, TypeRange& out2, TypeRange& out3,
+    const TypeRange& x0, const TypeRange& x1, const TypeRange& x2,
+    const TypeRange& y0, const TypeRange& y1, const TypeRange& y2
+) 
+{
+    out1 = x1*y2 - y1*x2;
+    out2 = x2*y0 - y2*x0;
+    out3 = x0*y1 - y0*x1;
+}
+
+
 TypeRange RangeOps::floor(const TypeRange& arg1)
 {
     //well, actually it shall be int range, i.e. 1,2,3,4, 1.5 is not an option
@@ -147,5 +158,10 @@ TypeRange RangeOps::getRightExcluding(const TypeRange& input, double edge)
     if (edge < input.left) return input;
 
     return TypeRange(edge, input.right, (RangeFlag)(input.flag & INCLUDE_RIGHT));
+}
 
+TypeRange RangeOps::getIncluded(const TypeRange& input, double edge)
+{
+    if (input.includes(edge)) return TypeRange(edge);
+    return InvalidRange;
 }
