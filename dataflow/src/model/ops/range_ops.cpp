@@ -18,6 +18,7 @@ TypeRange RangeOps::cos(const TypeRange& input)
     return TypeRange(-1, 1);
 }
 
+//todo[grishin]: strange: when compiling with O3 the min works like max O_o. when compiling with O0 - all ok
 TypeRange RangeOps::min(const TypeRange& arg1, const TypeRange& arg2)
 {
     return TypeRange(std::min(arg1.left, arg2.left), std::min(arg1.right, arg2.right));
@@ -26,6 +27,16 @@ TypeRange RangeOps::min(const TypeRange& arg1, const TypeRange& arg2)
 TypeRange RangeOps::max(const TypeRange& arg1, const TypeRange& arg2)
 {
     return TypeRange(std::max(arg1.left, arg2.left), std::max(arg1.right, arg2.right));
+}
+
+TypeRange RangeOps::mod(const TypeRange& arg1, const TypeRange& arg2)
+{
+    //todo: support negative cases, for now assume that arg1 > 0 && arg2 > 0
+    const TypeRange max(0, arg2.right, INCLUDE_LEFT);
+    if (max.includes(arg1)) {
+        return arg1;
+    }
+    return max;
 }
 
 TypeRange RangeOps::clamp(const TypeRange& arg1, const TypeRange& arg2, const TypeRange& arg3)

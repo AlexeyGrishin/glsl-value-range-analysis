@@ -35,14 +35,15 @@ enum OpCode {
     unary_minus_op = 32,
     or_op = 33,
     and_op = 34,
-    _define_op = 35,
-    _forget_op = 36,
-    _ifeq_op = 37,
-    _endif_op = 38,
-    _output_op = 39,
-    _watch_op = 40,
-    _ignore_op = 41,
-    _endwatch_op = 42,
-    _copy_op = 43
+    mod_op = 35,
+    _define_op = 36,
+    _forget_op = 37,
+    _ifeq_op = 38,
+    _endif_op = 39,
+    _output_op = 40,
+    _watch_op = 41,
+    _ignore_op = 42,
+    _endwatch_op = 43,
+    _copy_op = 44
 };
-constexpr unsigned int MAX_OPS = 44;
+constexpr unsigned int MAX_OPS = 45;

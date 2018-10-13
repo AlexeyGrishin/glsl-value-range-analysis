@@ -27,6 +27,7 @@ namespace RangeOps {
     TypeRange acos(const TypeRange& arg1);
 
     TypeRange sqrt(const TypeRange& arg1);
+    TypeRange mod(const TypeRange& arg1, const TypeRange& arg2);
 
     //following methods return invalid range if edge not included in input
     TypeRange getLeftIncluding(const TypeRange& input, double edge);

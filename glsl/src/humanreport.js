@@ -9,7 +9,9 @@ export default class HumanReport
             let variable = map.getById(varId);
             if (!variable) return {print: "?unknown?", highlight: null};
             let name = variable.name;
-            //todo: function arguments and local fns
+            if (name.indexOf(":") !== -1 && name.indexOf("_") !== -1) {
+                name = name.split("_").slice(1).join("_");
+            }
             if (name.indexOf(".") !== -1) {
                 let [main, suffix] = name.split(".");
                 let foundMain = Components.main.split('').some(ms => src.indexOf(`${main}.${ms}`) != -1);

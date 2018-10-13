@@ -253,6 +253,14 @@ BRANCH_OPERATION(GteOp, gte_op, {
     return false;
 });
 
+OPERATION(SmoothStepOp, smoothstep_op, {
+    //todo: calculate more smart
+    ctx.set(0, TypeRange(0, 1));
+    if (ctx.isDefined(1)) ctx.set(1, TypeRange(0, 1));
+    if (ctx.isDefined(2)) ctx.set(2, TypeRange(0, 1));
+    if (ctx.isDefined(3)) ctx.set(3, TypeRange(0, 1));
+})
+
 BRANCH_OPERATION(StepOp, step_op, {
     //0,1,2,3
     //4,5,6,7 - in1
@@ -316,7 +324,7 @@ void validatePower(LocalContext& ctx, unsigned int out, unsigned int arg1, unsig
     const TypeRange& base = ctx.get(arg1);
     const TypeRange& exp = ctx.get(arg2);
     //todo: check spec about power(a,b) when b < 0
-    if (base.left <= 0 || base.right < 0 || base.includes(0)) {
+    if (base.left < 0 || (base.includes(0) && exp.left <= 0 && exp.includes(0))) {
         ctx.addWarning(arg1, TypeRange(0, INFINITY, EXCLUDE_BOTH));
     }
     ctx.set(out, RangeOps::power(base, exp));
@@ -324,6 +332,10 @@ void validatePower(LocalContext& ctx, unsigned int out, unsigned int arg1, unsig
 
 OPERATION(PowOp, power_op, {
     APPLY_VEC4_VEC4_CTX(validatePower)
+});
+
+OPERATION(ModOp, mod_op, {
+    APPLY_VEC4_VEC4(RangeOps::mod);
 });
 
 void validateSqrt(LocalContext& ctx, unsigned int out, unsigned int arg1, unsigned int ignore) {
@@ -518,4 +530,7 @@ REGISTER(CrossOp)
 REGISTER(OrOp)
 REGISTER(AndOp)
 REGISTER(CopyOp)
+REGISTER(SqrtOp)
+REGISTER(ModOp)
+REGISTER(SmoothStepOp)
 REGISTER_END

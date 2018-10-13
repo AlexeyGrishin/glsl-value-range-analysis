@@ -7,14 +7,19 @@ function op(opCode, outTypeFn, devectorize) {
 }
 
 function firstArg(inTypes) { return inTypes[0]; }
+function maxType(inTypes) {
+    if (inTypes[0] === "float" && inTypes[1] !== "float") return inTypes[1];
+    return inTypes[0];
+}
 function secondArg(inTypes) { return inTypes[1]; }
+function thirdArg(inTypes) { return inTypes[2]; }
 
 //todo[grishin]: add all new functions, already supported
 const OpsMap = {
-    "+": op(OpCode.plus, firstArg, devecMath),
-    "-": op(OpCode.minus, firstArg, devecMath),
-    "*": op(OpCode.mul, firstArg, devecMath),
-    "/": op(OpCode.div, firstArg, devecMath),
+    "+": op(OpCode.plus, maxType, devecMath),
+    "-": op(OpCode.minus, maxType, devecMath),
+    "*": op(OpCode.mul, maxType, devecMath),
+    "/": op(OpCode.div, maxType, devecMath),
     "sin": op(OpCode.sin, firstArg, devecMath),
     "cos": op(OpCode.cos, firstArg, devecMath),
     "atan": op(OpCode.atan, firstArg, devecMath),
@@ -28,9 +33,11 @@ const OpsMap = {
     "pow": op(OpCode.power, firstArg, devecMath),
     "mix": op(OpCode.mix, firstArg, devecMath),
     "normalize": op(OpCode.normalize, firstArg, devecMath),
-    "dot": op(OpCode.dot, firstArg, devecCommon),
+    "dot": op(OpCode.dot, "float", devecCompare),
     "sqrt": op(OpCode.sqrt, firstArg, devecMath),
     "abs": op(OpCode.abs, firstArg, devecMath),
+    "mod": op(OpCode.mod, firstArg, devecMath),
+    "smoothstep": op(OpCode.smoothstep, thirdArg, devecMath), //todo: devecMath does not fit, but for now it just returns [0,1] const, so ok
     //todo: cross
     "unary-": op(OpCode.unary_minus, firstArg, devecMath),
     "<": op(OpCode.lt, "boolean", devecCompare),
@@ -421,7 +428,6 @@ export function convert(ast, map = new VariablesMap()) {
             process(stmtList);    
         } else {
             let declArgs = fn.children[1].children;
-            console.log(declArgs);
             let inTypes = declArgs.map(decl => decl.children.filter(c => c.type === "keyword").pop().token.data);
             let customFn = {
                 node,
@@ -434,7 +440,6 @@ export function convert(ast, map = new VariablesMap()) {
             };
             customFunctionsByName.set(fnName, customFn);
             customFunctions.set(functionId(fnName, inTypes), customFn);
-            console.log(customFunctions);
         }
     }
 
@@ -634,6 +639,7 @@ export function convert(ast, map = new VariablesMap()) {
             case "literal":
                 return createConst(node.token.data, node.token.type);
             case "ident":
+            case "builtin": //gl_FragColor
                 variable = map.getVariable(getActualVariableName(node.token.data));
                 if (variable) return varPtr(variable);
                 break;
@@ -753,8 +759,9 @@ function devecMath(op, map) {
     if (op.args.length > 1) {
         arg2 = getPtrComponents(op.args[1], map);
     }
+    let arg3 = [];
     if (op.args.length > 2) { //clamp/mix case
-        arg2 = arg2.concat(getPtrComponents(op.args[2], map));
+        arg3 = getPtrComponents(op.args[2], map);
     }
     while (outArgs.length < 4) outArgs.push(noVarPtr());
     if (arg2.length > 0) {
@@ -766,7 +773,7 @@ function devecMath(op, map) {
     } else {
         while (arg1.length < 4) arg1.push(noVarPtr());
     }
-    return {op: op.op, out: outArgs, args: arg1, range: op.range, line: op.line};
+    return {op: op.op, out: outArgs, args: arg1.concat(arg3), range: op.range, line: op.line};
 }
 
 

@@ -34,13 +34,14 @@ export default OpCode = {
     unary_minus: 32,
     or: 33,
     and: 34,
-    _define: 35,
-    _forget: 36,
-    _ifeq: 37,
-    _endif: 38,
-    _output: 39,
-    _watch: 40,
-    _ignore: 41,
-    _endwatch: 42,
-    _copy: 43
+    mod: 35,
+    _define: 36,
+    _forget: 37,
+    _ifeq: 38,
+    _endif: 39,
+    _output: 40,
+    _watch: 41,
+    _ignore: 42,
+    _endwatch: 43,
+    _copy: 44
 }

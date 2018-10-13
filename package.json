@@ -8,6 +8,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "wasm": "/Applications/cheerp/bin/clang++ -std=c++14 -target cheerp -cheerp-mode=wasm -cheerp-linear-heap-size=16 -Wall -cheerp-pretty-code -cheerp-wasm-loader=html/dataflow.js -cheerp-wasm-file=dataflow.wasm -O3 -o html/dataflow.wasm ./dataflow/src/*.cpp ./dataflow/src/model/*.cpp ./dataflow/src/model/ops/*.cpp",
+    "wasm-prod": "/Applications/cheerp/bin/clang++ -std=c++14 -target cheerp -cheerp-mode=wasm -cheerp-linear-heap-size=16 -Wall -cheerp-wasm-loader=html/dataflow.js -cheerp-wasm-file=dataflow.wasm -O0 -o html/dataflow.wasm ./dataflow/src/*.cpp ./dataflow/src/model/*.cpp ./dataflow/src/model/ops/*.cpp",
     "server": "http-server -p 3355 -c0 ./html",
     "dataflow-tests": "cd dataflow && scons && ./dataflow_tests && scons -c",
     "dataflow-tests-valgrind": "cd dataflow && scons && valgrind ./dataflow_tests && scons -c",

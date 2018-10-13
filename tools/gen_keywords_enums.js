@@ -11,6 +11,7 @@ const OpCodes = `
     assign
     max min sqrt abs
     fract power mix dot clamp normalize smoothstep floor cross unary_minus or and
+    mod
 
     _define
     _forget

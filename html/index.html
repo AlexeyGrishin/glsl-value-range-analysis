@@ -17,6 +17,21 @@
         padding: 10px;
       }
 
+      #toolbar button {
+        width: auto;
+      }
+      #toolbar > .line {
+        height: 2em;
+      }
+      #toolbar > .line.examples {
+        padding-left: 120px;
+      }
+
+      #toolbar #check {
+        font-size: 2em;
+        width: 120px;
+      }
+
       .enter .ql-container.ql-snow .ql-editor  {
         position: relative;
       }
@@ -89,8 +104,21 @@
       <div class="enter">
           <h3>GLSL checker</h3>
           <div id="toolbar">
-              <button id="check">Check</button>
-          </div>
+              <div class="first line">
+                  <button id="check">Check</button>
+    
+                  <label>
+                    <input type="checkbox" id="showtemp"> Show temp variables
+                  </label>
+                  <label>
+                    <input type="checkbox" id="debug"> Print debug in console
+                  </label>
+              </div>
+              <div class="second line examples">
+                
+              </div>
+
+            </div>
           <div class="editor">
           </div>
           <textarea autofocus></textarea>

@@ -37,12 +37,12 @@ class WarnHighlight
 }
 
 const UIController = {
-    init(src, parseSrcIntoReport) {
+    init(settings, parseSrcIntoReport) {
         this.checkButton = document.querySelector("#check");
         this.status = document.querySelector(".result h5");
         this.result = document.querySelector(".result pre");
         this.input = document.querySelector(".enter textarea");
-        this.input.value = src;
+        this.input.value = settings.src;
         this.input.style.display = "none";
         this.checkButton.innerHTML = "Please wait...";
         this.checkButton.disabled = true;
@@ -56,11 +56,27 @@ const UIController = {
             },
             theme: 'snow'
           });
-        this.quill.setText(src);
+        this.quill.setText(settings.src);
         this.quill.formatText(0, this.quill.getLength(), "code-block", true);
         this.warnHighlights = [];
         this.quill.on('text-change', ()=>this.hideWarnings());
-        this.showTemp = false;
+        this.showTemp = settings.showTemp;
+        this.settings = settings;
+
+        this.tempCheckbox = document.querySelector("#showtemp");
+        this.tempCheckbox.checked = this.settings.showTemp;
+        this.tempCheckbox.addEventListener("change", () => {
+            this.settings.save({showTemp: this.tempCheckbox.checked });
+            this.showTemp = this.tempCheckbox.checked ;
+            this.process();
+        });
+        this.debugCheckbox = document.querySelector("#debug");
+        this.debugCheckbox.checked = this.settings.needDebug;
+        this.debugCheckbox.addEventListener("change", () => {
+            this.settings.save({needDebug: this.debugCheckbox.checked });
+            this.process();
+        });
+        this.examplesLine = document.querySelector(".examples");
     },
 
     enableButton() {
@@ -77,8 +93,10 @@ const UIController = {
 
     showWarnings(warnings) {
         this.hideWarnings();
+        const shownForLines = new Set();
         for (let i = 0; i < warnings.length; i++) {
             let w = warnings[i];
+            if (shownForLines.has(w.line)) continue;
             let wh = this.warnHighlights[i];
             if (!wh) {
                 wh = new WarnHighlight(this.quill);
@@ -92,6 +110,7 @@ const UIController = {
             }
             let length = lines[li].length;
             wh.show(this.quill.getBounds(start, length), w.text);
+            shownForLines.add(w.line);
         }
     },
 
@@ -114,11 +133,26 @@ const UIController = {
         this.result.innerHTML += '<hr>' + out.join("\n");
     },
 
+    addExampleButton({name, src}) {
+        let button = document.createElement("button");
+        button.innerHTML = name;
+        this.examplesLine.appendChild(button);
+        button.addEventListener("click", () => {
+            this.quill.setText(src);
+            this.quill.formatText(0, this.quill.getLength(), "code-block", true);
+            this.process();
+        });
+    },
+
     process() {
         this.result.innerHTML = "";
         this.status.innerHTML = "Processing...";
+        const startTime = new Date().getTime();
         try {
-            let report = this.parseSrcIntoReport(this.quill.getText());
+            this.settings.save({src: this.quill.getText()});
+            let report = this.parseSrcIntoReport(this.quill.getText(), this.settings.needDebug);
+            const endTime = new Date().getTime();
+
             if (report.warnings.length) {
                 for (let w of report.warnings) {
                     let condition = '';
@@ -130,7 +164,7 @@ const UIController = {
             } else {
                 this.result.innerHTML += `<p class='success'>No Warnings!</p>`
             }
-            this.status.innerHTML = "Done!";
+            this.status.innerHTML = "Done in " + formatTime(endTime - startTime);
             this.showWarnings(report.warnings);
 
             this.showLog(report);
@@ -138,9 +172,18 @@ const UIController = {
         catch (e) {
             console.error(e);
             this.status.innerHTML = "Error :(";
-            this.result.innerHTML = JSON.stringify(e);
+            this.result.innerText = `
+${e.message}
+${e.stack}            
+            `;
+            
         }
     }
 };
+
+function formatTime(ms) {
+    if (ms < 1000) return ms + "ms";
+    return (ms/1000).toFixed(1) + "s";
+}
 
 export default UIController;
