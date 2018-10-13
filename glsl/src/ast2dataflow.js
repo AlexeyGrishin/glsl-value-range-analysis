@@ -14,7 +14,6 @@ function maxType(inTypes) {
 function secondArg(inTypes) { return inTypes[1]; }
 function thirdArg(inTypes) { return inTypes[2]; }
 
-//todo[grishin]: add all new functions, already supported
 const OpsMap = {
     "+": op(OpCode.plus, maxType, devecMath),
     "-": op(OpCode.minus, maxType, devecMath),
@@ -209,7 +208,6 @@ export function varPtr(varId, part) {
     return v;
 }
 
-//todo: define Op struct format (maybe with a class)
 export function convert(ast, map = new VariablesMap()) {
     let out = [];
 
@@ -287,7 +285,6 @@ export function convert(ast, map = new VariablesMap()) {
         for (let fnArgName of customFunction.inArgNames) {
             let newName = getActualVariableName(fnArgName, true);
             let variable = map.addVariable(newName, customFunction.inTypes[i], undefined);
-            //todo: check
             out.push({op: "=", out: [varPtr(variable)], args: [varPtr(argVars[i])], line: customFunction.node.token.line});    
             i++;
         }
@@ -400,21 +397,6 @@ export function convert(ast, map = new VariablesMap()) {
         return varPtr(variable);
     }
 
-    //todo: needed?
-    function renameVariables(node, fnName) {
-        if (node.type === "ident") {
-            node.token.data = fnName + "$" + node.token.data;
-            if (node.data) {
-                node.data = node.token.data;
-            }
-        }
-        if (node.type === "call") {
-            node.children.slice(1).forEach(c => renameVariables(c, fnName));
-            return;
-        }
-        if (node.children) node.children.forEach(c => renameVariables(c, fnName));
-    }
-
     //todo: in, out, inout modifiers
     function declfn(node) {
         let outType = node.children[node.children.length-2].token.data;
@@ -479,10 +461,8 @@ export function convert(ast, map = new VariablesMap()) {
         switch (left.type) {
             case "operator":
                 if (left.token.data === ".") {
-                    //todo: introduce helper for getVaraible that always calls to getActualVariableName
                     variable = map.getVariable(getActualVariableName(left.children[0].token.data));
                     part = left.children[1].token.data;
-                    //console.log('get id for ', left.children[0].token.data, '=>', varId)
                 }
                 break;
             case "ident":

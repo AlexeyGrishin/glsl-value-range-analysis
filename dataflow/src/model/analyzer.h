@@ -4,15 +4,14 @@
 #include "analisys_context.h"
 #include "ops.h"
 
-class DataFlowAnalyzer 
-{
+class DataFlowAnalyzer {
 private:
     AnalisysContext context;
     OpsRegistry& ops;
     LocalContext local;
 public:
     DataFlowAnalyzer();
-    ProcessResult processCommand(Command* command);
+    ProcessResult processCommand(const Command* command);
 
     const TypeRange* getRange(BranchId branchId, VarId varId) const;
     const std::vector<Warning> getWarnings() const;

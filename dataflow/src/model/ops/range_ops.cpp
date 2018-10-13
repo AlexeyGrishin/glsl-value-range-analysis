@@ -7,30 +7,25 @@
 
 double pi() { return 4*std::atan(1); } //2k18.. no const for PI
 
-TypeRange RangeOps::sin(const TypeRange& input)
-{
+TypeRange RangeOps::sin(const TypeRange& input) {
     //todo: calc
     return TypeRange(-1, 1);
 }
-TypeRange RangeOps::cos(const TypeRange& input)
-{
+TypeRange RangeOps::cos(const TypeRange& input) {
     //todo: calc
     return TypeRange(-1, 1);
 }
 
 //todo[grishin]: strange: when compiling with O3 the min works like max O_o. when compiling with O0 - all ok
-TypeRange RangeOps::min(const TypeRange& arg1, const TypeRange& arg2)
-{
+TypeRange RangeOps::min(const TypeRange& arg1, const TypeRange& arg2) {
     return TypeRange(std::min(arg1.left, arg2.left), std::min(arg1.right, arg2.right));
 }
 
-TypeRange RangeOps::max(const TypeRange& arg1, const TypeRange& arg2)
-{
+TypeRange RangeOps::max(const TypeRange& arg1, const TypeRange& arg2) {
     return TypeRange(std::max(arg1.left, arg2.left), std::max(arg1.right, arg2.right));
 }
 
-TypeRange RangeOps::mod(const TypeRange& arg1, const TypeRange& arg2)
-{
+TypeRange RangeOps::mod(const TypeRange& arg1, const TypeRange& arg2) {
     //todo: support negative cases, for now assume that arg1 > 0 && arg2 > 0
     const TypeRange max(0, arg2.right, INCLUDE_LEFT);
     if (max.includes(arg1)) {
@@ -39,15 +34,13 @@ TypeRange RangeOps::mod(const TypeRange& arg1, const TypeRange& arg2)
     return max;
 }
 
-TypeRange RangeOps::clamp(const TypeRange& arg1, const TypeRange& arg2, const TypeRange& arg3)
-{
+TypeRange RangeOps::clamp(const TypeRange& arg1, const TypeRange& arg2, const TypeRange& arg3) {
     //glsl spec says: The returned value is computed as min(max(x, minVal), maxVal).
     return min(max(arg1, arg2), arg3);
 }
 
 //todo: we can branch here for <1 and >1
-TypeRange RangeOps::power(const TypeRange& arg1, const TypeRange& arg2)
-{
+TypeRange RangeOps::power(const TypeRange& arg1, const TypeRange& arg2) {
     //assume that arg1 > 0
     if (arg1.isSingle()) {
         if (arg1.left == 1.0) {
@@ -65,8 +58,7 @@ TypeRange RangeOps::power(const TypeRange& arg1, const TypeRange& arg2)
     return TypeRange(std::min(std::min(a1, a2), std::min(a3, a4)), std::max(std::max(a1, a2), std::max(a3, a4)));
 }
 
-TypeRange RangeOps::mix(const TypeRange& arg1, const TypeRange& arg2, const TypeRange& mix)
-{
+TypeRange RangeOps::mix(const TypeRange& arg1, const TypeRange& arg2, const TypeRange& mix) {
     double left1 = arg1.left, left2 = arg2.left;
     double right1 = arg1.right, right2 = arg2.right;
 
@@ -84,8 +76,7 @@ TypeRange RangeOps::mix(const TypeRange& arg1, const TypeRange& arg2, const Type
 }
 
 TypeRange RangeOps::dot(const TypeRange& arg1, const TypeRange& arg2, const TypeRange& arg3, const TypeRange& arg4,
-                        const TypeRange& arg5, const TypeRange& arg6, const TypeRange& arg7, const TypeRange& arg8)
-{
+                        const TypeRange& arg5, const TypeRange& arg6, const TypeRange& arg7, const TypeRange& arg8) {
     //very straight-forward
     return arg1*arg5 + arg2*arg6 * arg3*arg7 + arg4*arg8;
 }
@@ -93,22 +84,19 @@ TypeRange RangeOps::dot(const TypeRange& arg1, const TypeRange& arg2, const Type
 void RangeOps::cross(TypeRange& out1, TypeRange& out2, TypeRange& out3,
     const TypeRange& x0, const TypeRange& x1, const TypeRange& x2,
     const TypeRange& y0, const TypeRange& y1, const TypeRange& y2
-) 
-{
+)  {
     out1 = x1*y2 - y1*x2;
     out2 = x2*y0 - y2*x0;
     out3 = x0*y1 - y0*x1;
 }
 
 
-TypeRange RangeOps::floor(const TypeRange& arg1)
-{
+TypeRange RangeOps::floor(const TypeRange& arg1) {
     //well, actually it shall be int range, i.e. 1,2,3,4, 1.5 is not an option
     return TypeRange(::floor(arg1.left), ::floor(arg1.right), INCLUDE_BOTH);
 }
 
-TypeRange RangeOps::fract(const TypeRange& arg1)
-{
+TypeRange RangeOps::fract(const TypeRange& arg1) {
     //todo: could use more smart analysis, like for [1.5, 1.8] return [0.5, 0.8].
     return TypeRange(0, 1, INCLUDE_LEFT);
 }
@@ -118,15 +106,13 @@ TypeRange pow2(const TypeRange& arg1) {
     return TypeRange(abs.left*abs.left, abs.right*abs.right);
 }
 
-TypeRange RangeOps::length(const TypeRange& arg1, const TypeRange& arg2, const TypeRange& arg3, const TypeRange& arg4)
-{
+TypeRange RangeOps::length(const TypeRange& arg1, const TypeRange& arg2, const TypeRange& arg3, const TypeRange& arg4) {
     TypeRange sqLength(0, 0);
     sqLength = pow2(arg1) + pow2(arg2) + pow2(arg3) + pow2(arg4);
     return TypeRange(::sqrt(sqLength.left), ::sqrt(sqLength.right));
 }
 
-TypeRange RangeOps::abs(const TypeRange& arg1)
-{
+TypeRange RangeOps::abs(const TypeRange& arg1) {
     double leftAbs = ::fabs(arg1.left);
     double rightAbs = ::fabs(arg1.right);
     double maxAbs = std::max(leftAbs, rightAbs);
@@ -140,38 +126,32 @@ TypeRange RangeOps::abs(const TypeRange& arg1)
     return TypeRange(minAbs, maxAbs);
 }
 
-TypeRange RangeOps::atan(const TypeRange& arg1)
-{
+TypeRange RangeOps::atan(const TypeRange& arg1) {
     return TypeRange(-pi(), pi());
 }
 
-TypeRange RangeOps::asin(const TypeRange& arg1)
-{
+TypeRange RangeOps::asin(const TypeRange& arg1) {
     return TypeRange(-pi()/2, pi()/2);
 }
 
-TypeRange RangeOps::acos(const TypeRange& arg1)
-{
+TypeRange RangeOps::acos(const TypeRange& arg1) {
     return TypeRange(0, pi());
 }
 
 
-TypeRange RangeOps::sqrt(const TypeRange& arg1)
-{
+TypeRange RangeOps::sqrt(const TypeRange& arg1) {
     TypeRange onlyPositive = RangeOps::getRightIncluding(arg1, 0);
     if (!onlyPositive.isValid()) return InvalidRange;
     return TypeRange(std::sqrt(onlyPositive.left), std::sqrt(onlyPositive.right), onlyPositive.flag);
 }
 
-TypeRange RangeOps::getLeftIncluding(const TypeRange& input, double edge)
-{
+TypeRange RangeOps::getLeftIncluding(const TypeRange& input, double edge) {
     if (edge >= input.right) return input;
     if (edge < input.left) return InvalidRange;
     return TypeRange(input.left, edge, (RangeFlag)((input.flag & INCLUDE_LEFT) | INCLUDE_RIGHT));
 }
 
-TypeRange RangeOps::getRightIncluding(const TypeRange& input, double edge)
-{
+TypeRange RangeOps::getRightIncluding(const TypeRange& input, double edge) {
     if (edge <= input.left) return input;
     if (edge > input.right) return InvalidRange;
 
@@ -179,24 +159,21 @@ TypeRange RangeOps::getRightIncluding(const TypeRange& input, double edge)
 
 }
 
-TypeRange RangeOps::getLeftExcluding(const TypeRange& input, double edge)
-{
+TypeRange RangeOps::getLeftExcluding(const TypeRange& input, double edge) {
     if (edge <= input.left) return InvalidRange;
     if (edge > input.right) return input;
 
     return TypeRange(input.left, edge, (RangeFlag)(input.flag & INCLUDE_LEFT));
 }
 
-TypeRange RangeOps::getRightExcluding(const TypeRange& input, double edge)
-{
+TypeRange RangeOps::getRightExcluding(const TypeRange& input, double edge) {
     if (edge >= input.right) return InvalidRange;
     if (edge < input.left) return input;
 
     return TypeRange(edge, input.right, (RangeFlag)(input.flag & INCLUDE_RIGHT));
 }
 
-TypeRange RangeOps::getIncluded(const TypeRange& input, double edge)
-{
+TypeRange RangeOps::getIncluded(const TypeRange& input, double edge) {
     if (input.includes(edge)) return TypeRange(edge);
     return InvalidRange;
 }

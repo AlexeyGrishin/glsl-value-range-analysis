@@ -6,21 +6,15 @@
 #include "defs.h"
 
 DataFlowAnalyzer::DataFlowAnalyzer()
-    : context(), ops(OpsRegistry::instance()), local(&context)
-{
-    
-}
+    : context(), ops(OpsRegistry::instance()), local(&context) {}
 
-//todo: set const everywhere
-ProcessResult DataFlowAnalyzer::processCommand(Command* command)
-{
+ProcessResult DataFlowAnalyzer::processCommand(const Command* command) {
     auto branches = context.getActiveBranches();
     local.start();
 
     for (auto branch: branches) {
         local.setup(branch->id, command);
-        switch (command->opCode)
-        {
+        switch (command->opCode) {
             case _define_op:
                 context.createVariable(branch->id, command->cmdId, command->getArgument(0), command->range);
                 break;
@@ -48,8 +42,7 @@ ProcessResult DataFlowAnalyzer::processCommand(Command* command)
     branches = context.getActiveBranches();
     for (auto branch: branches) {
         local.setup(branch->id, command);
-        switch (command->opCode)
-        {
+        switch (command->opCode) {
             case _define_op:
             case _forget_op:
                 break;
@@ -79,22 +72,18 @@ ProcessResult DataFlowAnalyzer::processCommand(Command* command)
 
 }
 
-const TypeRange* DataFlowAnalyzer::getRange(BranchId branchId, VarId varId) const
-{
+const TypeRange* DataFlowAnalyzer::getRange(BranchId branchId, VarId varId) const {
     return context.getRange(branchId, varId);
 }
 
-const std::vector<Warning> DataFlowAnalyzer::getWarnings() const
-{
+const std::vector<Warning> DataFlowAnalyzer::getWarnings() const {
     return context.getWarnings(); 
 }
 
-const std::vector<Branch> DataFlowAnalyzer::getBranches() const
-{
+const std::vector<Branch> DataFlowAnalyzer::getBranches() const {
     return context.getBranches();
 }
 
-const std::vector<VariableChange> DataFlowAnalyzer::getChanges() const
-{
+const std::vector<VariableChange> DataFlowAnalyzer::getChanges() const {
     return context.getChanges();
 }

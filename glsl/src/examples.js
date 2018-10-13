@@ -37,6 +37,24 @@ void main() {
         name: "Conditions",
         src: `
 uniform sampler2D uSampler;
+uniform vec2 vTextureCoord /*0,1*/;  
+
+void main() {
+    vec4 color = texture2D(uSampler, vTextureCoord);
+    float flag = color.a - 0.5;
+    if (flag > 0.) {
+        color.a -= 0.5;
+    } else {
+        color.a /= 2.;
+    }
+    gl_FragColor = color;
+}
+        `
+    },
+    {
+        name: "Complex Conditions",
+        src: `
+uniform sampler2D uSampler;
 uniform sampler2D tempMap;
 uniform vec2 vTextureCoord /*0,1*/;
 
@@ -151,8 +169,19 @@ void main() {
         `
     },
     {
-        name: "All together",
-        src: ``
+        name: "Dependent bug",
+        src: `
+
+uniform float value /*9,10*/;     
+void main() {
+
+    float val2 = value - 1.;
+
+    //Here gl_FragColor shall be vec4(1), but it does not - due to bug in analyzer
+    gl_FragColor = vec4(value-val2);
+
+}
+        `
     },
     {
         name: "ShaderToy - new",

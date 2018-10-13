@@ -12,9 +12,6 @@ struct VariableChange;
 
 class AnalisysContext {
 private:
-    //todo: redo with linked lists. also there could be separate list of active variables/branches, 
-    //to iterate over them only 
-    //todo: do I need map here? not just vector?
     std::map<VarId, std::unique_ptr<Variable>> variables;
     VarId maxCreatedId;
     std::vector<std::unique_ptr<Branch>> branches;
@@ -64,8 +61,6 @@ struct Branch {
     unsigned int nestedIfs;
 
     VarId stopSkipOnWatchEnd;
-
-    //Branch(){}
 
     Branch(BranchId id, BranchId parentId, CmdId cmdId, VarId varId): 
         id(id), parentId(parentId), cmdId(cmdId), varId(varId), active(true), skip(false), nestedIfs(0), stopSkipOnWatchEnd(UNKNOWN_VAR) {}
