@@ -11,7 +11,7 @@
   
 ## Where to try
 
-  (https://alexeygrishin.github.io/glsl-value-range-analysis/html/)[Here]
+  [Here](https://alexeygrishin.github.io/glsl-value-range-analysis/html/)
 
 ## How to build  
 
